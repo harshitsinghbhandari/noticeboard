@@ -6,9 +6,14 @@ import { authMiddleware } from '../infrastructure/http/auth_middleware';
 import { getUser } from '../infrastructure/db/user_repository';
 import { getProfile, upsertProfile } from '../infrastructure/db/profile_repository';
 import { createRequest, updateStatus, listIncoming, listOutgoing } from '../infrastructure/db/connection_repository';
-import { createPost, listPosts, addComment, listComments, addReaction, removeReaction, getPost, listUserPosts } from '../infrastructure/db/post_repository';
+import { createPost, listPosts, addComment, listComments, addReaction, removeReaction, getPost, listUserPosts, getAggregatedFeed } from '../infrastructure/db/post_repository';
 import { createNotification, listNotifications, markAsRead } from '../infrastructure/db/notification_repository';
 import { getConnection } from '../infrastructure/db/connection_repository';
+import { createClub, listClubs, getClub, followClub, unfollowClub, listFollowedClubs, isFollowingClub, updateClub, deleteClub } from '../infrastructure/db/club_repository';
+import { createOpening, listOpenings, getOpening, updateOpening, deleteOpening } from '../infrastructure/db/opening_repository';
+import { sendMessage, listConversations, getChat, markMessagesAsRead } from '../infrastructure/db/message_repository';
+import { requireRole } from '../infrastructure/http/auth_middleware';
+import { body, validationResult } from 'express-validator';
 
 const app = express();
 const port = parseInt(process.env.PORT || '3000');
@@ -200,17 +205,21 @@ app.get('/connections/outgoing', authMiddleware, async (req, res) => {
 // Post Routes
 app.post('/posts', authMiddleware, async (req, res) => {
     if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
-    const { content, visibility } = req.body;
+    const { content, visibility, club_id } = req.body;
 
     if (!content || typeof content !== 'string') {
         return res.status(400).json({ error: 'Content is required' });
+    }
+
+    if (club_id && !req.user.roles.includes('CLUB_CONVENER')) {
+        return res.status(403).json({ error: 'Only club conveners can post as a club' });
     }
 
     const validVisibility = ['public', 'connections_only'];
     const postVisibility = (visibility && validVisibility.includes(visibility)) ? visibility : 'public';
 
     try {
-        const post = await createPost(req.user.id, content, postVisibility);
+        const post = await createPost(req.user.id, content, postVisibility, club_id);
         res.status(201).json(post);
     } catch (error) {
         console.error('Create post error', error);
@@ -224,8 +233,8 @@ app.get('/posts', authMiddleware, async (req, res) => {
     const cursor = req.query.cursor as string;
 
     try {
-        const posts = await listPosts(req.user.id, limit, cursor);
-        res.json(posts);
+        const feed = await getAggregatedFeed(req.user.id, limit, cursor);
+        res.json(feed);
     } catch (error) {
         console.error('List posts error', error);
         res.status(500).json({ error: 'Internal server error' });
@@ -408,6 +417,227 @@ app.post('/connections/:id/accept', authMiddleware, async (req, res) => {
     }
 });
 
-app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
+// Club Routes
+app.get('/clubs', authMiddleware, async (req, res) => {
+    try {
+        const clubs = await listClubs();
+        res.json(clubs);
+    } catch (error) {
+        console.error('List clubs error', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
 });
+
+app.get('/clubs/followed', authMiddleware, async (req, res) => {
+    try {
+        const clubs = await listFollowedClubs(req.user!.id);
+        res.json(clubs);
+    } catch (error) {
+        console.error('List followed clubs error', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/clubs',
+    authMiddleware,
+    requireRole('CLUB_ADMIN'),
+    body('name').notEmpty().withMessage('Name is required'),
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+    const { name, description, website_url } = req.body;
+    try {
+        const club = await createClub(name, description, website_url);
+        res.status(201).json(club);
+    } catch (error) {
+        console.error('Create club error', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.put('/clubs/:id',
+    authMiddleware,
+    requireRole('CLUB_ADMIN'),
+    body('name').notEmpty().withMessage('Name is required'),
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+        const { name, description, website_url } = req.body;
+        try {
+            const club = await updateClub(req.params.id, name, description, website_url);
+            if (!club) return res.status(404).json({ error: 'Club not found' });
+            res.json(club);
+        } catch (error) {
+            console.error('Update club error', error);
+            res.status(500).json({ error: 'Internal server error' });
+        }
+    }
+);
+
+app.delete('/clubs/:id', authMiddleware, requireRole('CLUB_ADMIN'), async (req, res) => {
+    try {
+        await deleteClub(req.params.id);
+        res.status(204).send();
+    } catch (error) {
+        console.error('Delete club error', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.get('/clubs/:id/posts', authMiddleware, async (req, res) => {
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
+    const cursor = req.query.cursor as string;
+    try {
+        const posts = await listPosts(req.user!.id, limit, cursor, req.params.id);
+        res.json(posts);
+    } catch (error) {
+        console.error('List club posts error', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.get('/clubs/:id', authMiddleware, async (req, res) => {
+    try {
+        const club = await getClub(req.params.id);
+        if (!club) return res.status(404).json({ error: 'Club not found' });
+
+        const isFollowing = await isFollowingClub(club.id, req.user!.id);
+        res.json({ ...club, is_following: isFollowing });
+    } catch (error) {
+        console.error('Get club error', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/clubs/:id/follow', authMiddleware, async (req, res) => {
+    try {
+        await followClub(req.params.id, req.user!.id);
+        res.json({ status: 'followed' });
+    } catch (error) {
+        console.error('Follow club error', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.delete('/clubs/:id/follow', authMiddleware, async (req, res) => {
+    try {
+        await unfollowClub(req.params.id, req.user!.id);
+        res.json({ status: 'unfollowed' });
+    } catch (error) {
+        console.error('Unfollow club error', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Opening Routes
+app.get('/openings', authMiddleware, async (req, res) => {
+    const { club_id, job_type, experience_level } = req.query;
+    try {
+        const openings = await listOpenings({
+            club_id: club_id as string,
+            job_type: job_type as string,
+            experience_level: experience_level as string
+        });
+        res.json(openings);
+    } catch (error) {
+        console.error('List openings error', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/openings',
+    authMiddleware,
+    requireRole('CLUB_CONVENER'),
+    body('club_id').notEmpty(),
+    body('title').notEmpty(),
+    body('description').notEmpty(),
+    body('job_type').notEmpty(),
+    body('experience_level').notEmpty(),
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+    const { club_id, title, description, location_city, location_country, job_type, experience_level } = req.body;
+    try {
+        const opening = await createOpening({ club_id, title, description, location_city, location_country, job_type, experience_level });
+        res.status(201).json(opening);
+    } catch (error) {
+        console.error('Create opening error', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.put('/openings/:id',
+    authMiddleware,
+    requireRole('CLUB_CONVENER'),
+    async (req, res) => {
+        try {
+            const opening = await updateOpening(req.params.id, req.body);
+            if (!opening) return res.status(404).json({ error: 'Opening not found' });
+            res.json(opening);
+        } catch (error) {
+            console.error('Update opening error', error);
+            res.status(500).json({ error: 'Internal server error' });
+        }
+    }
+);
+
+app.delete('/openings/:id', authMiddleware, requireRole('CLUB_CONVENER'), async (req, res) => {
+    try {
+        await deleteOpening(req.params.id);
+        res.status(204).send();
+    } catch (error) {
+        console.error('Delete opening error', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Message Routes
+app.get('/messages', authMiddleware, async (req, res) => {
+    try {
+        const conversations = await listConversations(req.user!.id);
+        res.json(conversations);
+    } catch (error) {
+        console.error('List conversations error', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.get('/messages/:userId', authMiddleware, async (req, res) => {
+    const { userId } = req.params;
+    try {
+        const chat = await getChat(req.user!.id, userId);
+        await markMessagesAsRead(req.user!.id, userId);
+        res.json(chat);
+    } catch (error) {
+        console.error('Get chat error', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/messages', authMiddleware, async (req, res) => {
+    const { receiver_id, message_text, attachment_url } = req.body;
+    if (!receiver_id || !message_text) {
+        return res.status(400).json({ error: 'receiver_id and message_text are required' });
+    }
+    try {
+        const message = await sendMessage(req.user!.id, receiver_id, message_text, attachment_url);
+        res.status(201).json(message);
+    } catch (error) {
+        console.error('Send message error', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+if (process.env.NODE_ENV !== 'test') {
+    app.listen(port, () => {
+        console.log(`Server running at http://localhost:${port}`);
+    });
+}
+
+export default app;

@@ -5,6 +5,10 @@ import Feed from './components/Feed';
 import Notifications from './components/Notifications';
 import Layout from './components/Layout';
 import Connections from './components/Connections';
+import Clubs from './components/Clubs';
+import ClubProfile from './components/ClubProfile';
+import Openings from './components/Openings';
+import Messages from './components/Messages';
 
 import Profile from './components/Profile';
 import SinglePost from './components/SinglePost';
@@ -119,6 +123,10 @@ function AppContent() {
               <Route path="/" element={<Navigate to="/feed" replace />} />
               <Route path="/feed" element={<Feed authenticatedFetch={authenticatedFetch} />} />
               <Route path="/connections" element={<Connections authenticatedFetch={authenticatedFetch} />} />
+              <Route path="/clubs" element={<Clubs authenticatedFetch={authenticatedFetch} />} />
+              <Route path="/clubs/:id" element={<ClubProfile authenticatedFetch={authenticatedFetch} />} />
+              <Route path="/openings" element={<Openings authenticatedFetch={authenticatedFetch} />} />
+              <Route path="/messages" element={<Messages authenticatedFetch={authenticatedFetch} />} />
               <Route path="/notifications" element={<NotificationsWithNavigation authenticatedFetch={authenticatedFetch} />} />
               <Route path="/profile/:id" element={<Profile authenticatedFetch={authenticatedFetch} currentUserId={parsedToken?.sub} />} />
               <Route path="/posts/:id" element={<SinglePostWrapper authenticatedFetch={authenticatedFetch} />} />

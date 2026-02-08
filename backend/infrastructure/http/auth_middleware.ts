@@ -28,6 +28,7 @@ export interface AuthUser {
     email: string;
     first_name: string;
     last_name: string;
+    roles: string[];
 }
 
 declare global {
@@ -36,6 +37,20 @@ declare global {
             user?: AuthUser;
         }
     }
+}
+
+export function requireRole(role: string) {
+    return (req: Request, res: Response, next: NextFunction) => {
+        if (!req.user) {
+            res.status(401).json({ error: 'Unauthorized' });
+            return;
+        }
+        if (!req.user.roles.includes(role)) {
+            res.status(403).json({ error: `Forbidden: Requires role ${role}` });
+            return;
+        }
+        next();
+    };
 }
 
 export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
@@ -76,11 +91,13 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
                 return;
             }
 
+            const roles = payload.realm_access?.roles || [];
             const user: AuthUser = {
                 id: payload.sub,
                 email: payload.email,
                 first_name: payload.given_name,
                 last_name: payload.family_name,
+                roles,
             };
 
             try {

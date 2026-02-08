@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { Post } from '../types';
+import type { FeedItem } from '../types';
 import PostCard from './PostCard';
 
 interface FeedProps {
@@ -7,7 +7,7 @@ interface FeedProps {
 }
 
 export default function Feed({ authenticatedFetch }: FeedProps) {
-    const [posts, setPosts] = useState<Post[]>([]);
+    const [posts, setPosts] = useState<FeedItem[]>([]);
     const [newPostContent, setNewPostContent] = useState('');
     const [isPosting, setIsPosting] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
@@ -50,7 +50,8 @@ export default function Feed({ authenticatedFetch }: FeedProps) {
         }
     };
 
-    const handleLike = async (post: Post) => {
+    const handleLike = async (post: FeedItem) => {
+        if (post.type === 'opening') return;
         // Optimistic update
         const updatedPosts = posts.map(p => {
             if (p.id === post.id) {
