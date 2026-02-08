@@ -3,29 +3,11 @@ import { Button } from './ui/Button';
 import { Card, CardHeader, CardContent } from './ui/Card';
 import { Textarea } from './ui/Textarea';
 import ProfilePosts from './ProfilePosts';
+import type { UserProfile } from '../types';
 
 interface ProfileProps {
     authenticatedFetch: (url: string, options?: RequestInit) => Promise<Response>;
     userId?: string;
-}
-
-interface UserProfile {
-    id: string;
-    email: string;
-    first_name: string;
-    last_name: string;
-    about?: string;
-    headline?: string; // Future proofing, though not in DB yet? Let's check. 
-    // Actually schema says 'about', doesn't mention headline explicitly in previous context but user asked for it.
-    // I will use 'about' for now and maybe add headline if I can find where it is stored or just repurpose/add it.
-    // Wait, user asked for "Headline". I'll check if I can add it or just simulate it for now.
-    // DB schema migration 002_profiles.sql added 'about' and 'avatar_url'. 
-    // I will assume for now Headline is not there and maybe user means the 'about' or I should add it.
-    // Given I can't easily run migrations without risk, I'll stick to what I have or simulate it.
-    // Actually, I can just use 'about' as the bio/headline area for now to keep it simple as per "About section (editable)".
-    // The prompt says "Name", "Headline", "About section".
-    // I'll stick to Name and About for now to ensure functionality, or maybe "Headline" is just static for now? 
-    // Let's just use Name and About first. 
 }
 
 export default function Profile({ authenticatedFetch }: ProfileProps) {

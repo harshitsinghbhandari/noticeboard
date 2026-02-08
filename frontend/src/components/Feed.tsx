@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Post } from '../types';
+import type { Post } from '../types';
 import { Button } from './ui/Button';
 import { Textarea } from './ui/Textarea';
 import { Card, CardContent } from './ui/Card';

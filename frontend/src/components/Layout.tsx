@@ -1,10 +1,10 @@
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Button } from './ui/Button';
 
 interface LayoutProps {
     children: ReactNode;
-    activeTab: 'profile' | 'connections' | 'feed' | 'notifications';
-    setActiveTab: (tab: 'profile' | 'connections' | 'feed' | 'notifications') => void;
+    activeTab: 'profile' | 'connections' | 'feed' | 'notifications' | 'post';
+    setActiveTab: (tab: 'profile' | 'connections' | 'feed' | 'notifications' | 'post') => void;
     userEmail?: string;
     onLogout: () => void;
 }
