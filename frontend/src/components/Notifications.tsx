@@ -10,6 +10,7 @@ interface NotificationsProps {
 export default function Notifications({ authenticatedFetch, onNotificationClick }: NotificationsProps) {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [filter, setFilter] = useState<'all' | 'unread'>('all');
 
     const fetchNotifications = useCallback(async () => {
         setIsLoading(true);
@@ -51,44 +52,121 @@ export default function Notifications({ authenticatedFetch, onNotificationClick 
         onNotificationClick(notification);
     };
 
-    const getMessage = (n: Notification) => {
-        const name = `${n.actor_first_name} ${n.actor_last_name}`;
-        switch (n.type) {
-            case 'like': return `${name} liked your post.`;
-            case 'comment': return `${name} commented on your post.`;
-            case 'connection': return `${name} accepted your connection request.`;
-            default: return 'New notification';
+    const getIcon = (type: string) => {
+        switch (type) {
+            case 'like': return <span className="material-symbols-outlined text-[12px] font-bold">favorite</span>;
+            case 'comment': return <span className="material-symbols-outlined text-[12px] font-bold">chat_bubble</span>;
+            case 'connection': return <span className="material-symbols-outlined text-[12px] font-bold">person_add</span>;
+            default: return <span className="material-symbols-outlined text-[12px] font-bold">notifications</span>;
         }
     };
 
+    const getIconBg = (type: string) => {
+        switch (type) {
+            case 'like': return 'bg-red-500';
+            case 'comment': return 'bg-green-500';
+            case 'connection': return 'bg-primary';
+            default: return 'bg-slate-500';
+        }
+    };
+
+    const filteredNotifications = filter === 'all'
+        ? notifications
+        : notifications.filter(n => !n.read_at);
+
     return (
-        <div className="space-y-4">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold">Notifications</h3>
+        <div className="layout-content-container flex flex-col max-w-[800px] flex-1 mx-auto">
+            {/* Notification Header */}
+            <div className="flex flex-wrap justify-between items-end gap-4 mb-6">
+                <div>
+                    <h1 className="text-slate-900 dark:text-white text-3xl font-extrabold tracking-tight">Notifications</h1>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Stay updated with your campus activity</p>
+                </div>
                 <button
-                    onClick={fetchNotifications}
-                    className="text-sm text-blue-600 hover:text-blue-800"
+                    className="flex items-center gap-2 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg text-sm font-semibold transition-colors"
+                    onClick={() => fetchNotifications()}
                 >
+                    <span className="material-symbols-outlined text-sm">refresh</span>
                     Refresh
                 </button>
             </div>
 
-            {isLoading ? (
-                <p className="text-gray-500">Loading...</p>
-            ) : notifications.length === 0 ? (
-                <p className="text-gray-500 italic">No notifications.</p>
-            ) : (
-                <div className="bg-white rounded shadow-sm border border-gray-200 divide-y divide-gray-100">
-                    {notifications.map((n) => (
+            {/* Filters */}
+            <div className="flex border-b border-slate-200 dark:border-slate-800 mb-2">
+                <button
+                    className={`px-6 py-3 border-b-2 text-sm font-bold transition-all ${filter === 'all' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                    onClick={() => setFilter('all')}
+                >
+                    All
+                </button>
+                <button
+                    className={`px-6 py-3 border-b-2 text-sm font-bold transition-all ${filter === 'unread' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                    onClick={() => setFilter('unread')}
+                >
+                    Unread
+                </button>
+            </div>
+
+            {/* Notifications List */}
+            <div className="flex flex-col gap-1">
+                {isLoading ? (
+                    <div className="py-10 text-center text-slate-400 animate-pulse">Loading notifications...</div>
+                ) : filteredNotifications.length === 0 ? (
+                    <div className="py-20 text-center text-slate-400 italic">
+                        {filter === 'unread' ? 'No unread notifications' : 'No notifications yet'}
+                    </div>
+                ) : (
+                    filteredNotifications.map((n) => (
                         <div
                             key={n.id}
                             onClick={() => handleClick(n)}
-                            className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors ${!n.read_at ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''}`}
+                            className={`group flex items-center gap-4 p-4 rounded-xl transition-all cursor-pointer relative ${
+                                !n.read_at
+                                    ? 'bg-primary/5 hover:bg-primary/10 dark:bg-primary/10 dark:hover:bg-primary/20'
+                                    : 'bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800'
+                            }`}
                         >
-                            <p className="text-sm text-gray-800">{getMessage(n)}</p>
-                            <p className="text-xs text-gray-500 mt-1">{timeAgo(n.created_at)}</p>
+                            {!n.read_at && (
+                                <div className="absolute left-1 top-1/2 -translate-y-1/2 w-1 h-12 bg-primary rounded-full"></div>
+                            )}
+                            <div className="relative">
+                                <div className="size-12 rounded-full border-2 border-white dark:border-slate-800 bg-primary/10 flex items-center justify-center text-primary font-bold">
+                                    {n.actor_first_name?.[0]}
+                                </div>
+                                <div className={`absolute -bottom-1 -right-1 ${getIconBg(n.type)} text-white rounded-full size-5 flex items-center justify-center border-2 border-white dark:border-slate-800`}>
+                                    {getIcon(n.type)}
+                                </div>
+                            </div>
+                            <div className="flex flex-col flex-1">
+                                <p className={`text-sm md:text-base ${!n.read_at ? 'text-slate-900 dark:text-slate-100' : 'text-slate-600 dark:text-slate-300'}`}>
+                                    <span className="font-bold">{n.actor_first_name} {n.actor_last_name}</span>
+                                    {n.type === 'like' && ' liked your post'}
+                                    {n.type === 'comment' && ' commented on your post'}
+                                    {n.type === 'connection' && ' accepted your connection request'}
+                                </p>
+                                <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">{timeAgo(n.created_at)}</p>
+                            </div>
+                            {!n.read_at && (
+                                <div className="shrink-0 flex items-center gap-2">
+                                    <span className="w-2.5 h-2.5 bg-primary rounded-full"></span>
+                                </div>
+                            )}
+                            <div className="shrink-0">
+                                <button className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <span className="material-symbols-outlined">more_horiz</span>
+                                </button>
+                            </div>
                         </div>
-                    ))}
+                    ))
+                )}
+            </div>
+
+            {/* Load More Button */}
+            {filteredNotifications.length > 0 && (
+                <div className="flex justify-center mt-8 pb-12">
+                    <button className="flex items-center gap-2 px-8 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm">
+                        Load more notifications
+                    </button>
                 </div>
             )}
         </div>

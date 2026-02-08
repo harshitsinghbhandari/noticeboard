@@ -1,8 +1,5 @@
 import { useState } from 'react';
 import type { Post, Comment } from '../types';
-import { Button } from './ui/Button';
-import { Card, CardHeader, CardContent, CardFooter } from './ui/Card';
-import { Input } from './ui/Input';
 import { timeAgo } from '../utils/timeAgo';
 
 interface PostCardProps {
@@ -52,12 +49,6 @@ export default function PostCard({ post, authenticatedFetch, onLike, onCommentAd
                 body: JSON.stringify({ content: newComment }),
             });
             if (res.ok) {
-                await res.json();
-                // Depending on API response, we append using the response
-                // But we need the author info. Backend usually returns it or we optimistically add it.
-                // Assuming backend returns complete comment object or we refetch.
-                // The previous implementation refetched or updated locally. 
-                // Let's refetch to be safe and simple.
                 setNewComment('');
                 fetchComments();
                 onCommentAdded(post.id);
@@ -70,98 +61,117 @@ export default function PostCard({ post, authenticatedFetch, onLike, onCommentAd
     };
 
     return (
-        <Card className="overflow-hidden">
-            <CardHeader className="pb-3">
-                <div className="flex justify-between items-start">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                            {post.author_first_name?.[0]}
-                        </div>
-                        <div>
-                            <div className="font-semibold text-text-primary">
-                                {post.author_first_name} {post.author_last_name}
-                            </div>
-                            <div className="text-xs text-text-muted">
-                                {timeAgo(post.created_at)}
-                                {post.visibility !== 'public' && (
-                                    <span className="ml-2 inline-flex items-center rounded-full bg-surface-muted px-2 py-0.5 text-xs font-medium text-text-muted border border-border">
-                                        Connections
-                                    </span>
-                                )}
-                            </div>
+        <article className="bg-white dark:bg-[#1a242f] rounded-xl shadow-sm border border-[#e8edf3] dark:border-gray-800 overflow-hidden hover:border-primary/20 transition-all">
+            <div className="p-5">
+                {/* Post Header */}
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="h-11 w-11 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold overflow-hidden">
+                        {post.author_first_name?.[0]}
+                    </div>
+                    <div>
+                        <h3 className="text-sm font-bold text-[#0e141b] dark:text-white leading-tight">
+                            {post.author_first_name} {post.author_last_name}
+                        </h3>
+                        <div className="flex items-center gap-1.5 text-xs text-[#507395] dark:text-gray-400">
+                            <span>{post.author_headline || 'Student'}</span>
+                            <span>•</span>
+                            <span>{timeAgo(post.created_at)}</span>
                         </div>
                     </div>
-                </div>
-            </CardHeader>
-            <CardContent className="py-2">
-                <p className="text-text-primary whitespace-pre-wrap leading-relaxed">
-                    {post.content}
-                </p>
-            </CardContent>
-            <CardFooter className="flex-col items-stretch pt-2">
-                <div className="flex items-center gap-4 border-t border-border pt-3 w-full">
-                    <Button
-                        variant="ghost"
-                        onClick={() => onLike(post)}
-                        className={`gap-2 ${post.has_liked ? 'text-primary' : 'text-text-muted'}`}
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill={post.has_liked ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" /></svg>
-                        {post.likes_count > 0 && <span>{post.likes_count}</span>}
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        onClick={toggleComments}
-                        className="gap-2 text-text-muted"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-                        {post.comments_count > 0 && <span>{post.comments_count}</span>}
-                    </Button>
+                    <button className="ml-auto text-[#507395] dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 p-1 rounded">
+                        <span className="material-symbols-outlined">more_horiz</span>
+                    </button>
                 </div>
 
-                {isExpanded && (
-                    <div className="mt-4 pt-4 border-t border-border w-full animate-in slide-in-from-top-2 duration-200">
-                        <div className="space-y-4 mb-4 max-h-60 overflow-y-auto pr-2">
-                            {comments.length === 0 ? (
-                                <p className="text-center text-sm text-text-muted italic py-2">No comments yet</p>
-                            ) : (
-                                comments.map(comment => (
-                                    <div key={comment.id} className="flex gap-3 text-sm">
-                                        <div className="w-8 h-8 rounded-full bg-surface-muted flex-shrink-0 flex items-center justify-center text-xs font-medium text-text-muted border border-border">
-                                            {comment.author_first_name?.[0]}
-                                        </div>
-                                        <div className="bg-surface-muted p-3 rounded-lg rounded-tl-none flex-1">
-                                            <div className="flex justify-between items-baseline mb-1">
-                                                <span className="font-semibold text-text-primary text-xs">
-                                                    {comment.author_first_name} {comment.author_last_name}
-                                                </span>
-                                                <span className="text-[10px] text-text-muted">
-                                                    {timeAgo(comment.created_at)}
-                                                </span>
-                                            </div>
-                                            <p className="text-text-primary">{comment.content}</p>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
+                {/* Post Body */}
+                <div className="text-[#0e141b] dark:text-gray-200 text-sm leading-relaxed mb-4 whitespace-pre-wrap">
+                    <p>{post.content}</p>
+                </div>
+
+                {/* Post Meta Info */}
+                <div className="flex items-center justify-between py-3 border-y border-gray-100 dark:border-gray-800 mb-2">
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-1.5">
+                            <div className="flex -space-x-2">
+                                <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center ring-2 ring-white dark:ring-[#1a242f]">
+                                    <span className="material-symbols-outlined text-[12px] text-white filled-icon">thumb_up</span>
+                                </div>
+                            </div>
+                            <span className="text-xs font-medium text-[#507395] dark:text-gray-400">
+                                {post.likes_count} likes
+                            </span>
                         </div>
-                        <div className="flex gap-2 items-center">
-                            <Input
+                        <span className="text-xs font-medium text-[#507395] dark:text-gray-400">
+                            {post.comments_count} comments
+                        </span>
+                    </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => onLike(post)}
+                        className={`flex-1 py-2 flex items-center justify-center gap-2 rounded-lg font-semibold text-sm transition-colors ${
+                            post.has_liked
+                                ? 'text-primary bg-primary/5 hover:bg-primary/10'
+                                : 'text-[#507395] dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                        }`}
+                    >
+                        <span className={`material-symbols-outlined text-xl ${post.has_liked ? 'filled-icon' : ''}`}>
+                            thumb_up
+                        </span>
+                        <span>{post.has_liked ? 'Liked' : 'Like'}</span>
+                    </button>
+                    <button
+                        onClick={toggleComments}
+                        className={`flex-1 py-2 flex items-center justify-center gap-2 text-[#507395] dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg font-semibold text-sm transition-colors ${
+                            isExpanded ? 'bg-gray-100 dark:bg-gray-800' : ''
+                        }`}
+                    >
+                        <span className="material-symbols-outlined text-xl">chat_bubble</span>
+                        <span>Comment</span>
+                    </button>
+                </div>
+
+                {/* Comments Section */}
+                {isExpanded && (
+                    <div className="mt-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                            {comments.map((comment) => (
+                                <div key={comment.id} className="py-3 flex gap-3">
+                                    <div className="h-8 w-8 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs overflow-hidden">
+                                        {comment.author_first_name?.[0]}
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-xs font-bold">{comment.author_first_name} {comment.author_last_name}</span>
+                                            <span className="text-[10px] text-gray-400">{timeAgo(comment.created_at)}</span>
+                                        </div>
+                                        <p className="text-sm text-gray-600 dark:text-gray-300">{comment.content}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="flex gap-2 pt-2">
+                            <input
+                                className="flex-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                                placeholder="Add a comment..."
                                 value={newComment}
                                 onChange={(e) => setNewComment(e.target.value)}
-                                placeholder="Write a comment..."
-                                className="flex-1"
                                 onKeyDown={(e) => e.key === 'Enter' && handleComment()}
                             />
-                            <Button
+                            <button
+                                className="px-4 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary/90 disabled:opacity-50"
                                 onClick={handleComment}
                                 disabled={isCommenting || !newComment.trim()}
                             >
-                                Send
-                            </Button>
+                                {isCommenting ? '...' : 'Post'}
+                            </button>
                         </div>
                     </div>
                 )}
-            </CardFooter>
-        </Card>
+            </div>
+        </article>
     );
 }

@@ -9,6 +9,7 @@ export interface Post {
   updated_at: Date;
   author_first_name: string;
   author_last_name: string;
+  author_headline?: string;
 }
 
 export async function createPost(authorId: string, content: string, visibility: 'public' | 'connections_only' = 'public'): Promise<Post> {
@@ -22,14 +23,15 @@ export async function createPost(authorId: string, content: string, visibility: 
 
   // We need to fetch the author details for the newly created post to match the interface
   // or we can make them optional. For now, let's fetch them.
-  const userQuery = 'SELECT first_name, last_name FROM users WHERE id = $1';
+  const userQuery = 'SELECT first_name, last_name, headline FROM users WHERE id = $1';
   const userResult = await pool.query(userQuery, [authorId]);
   const user = userResult.rows[0];
 
   return {
     ...post,
     author_first_name: user.first_name,
-    author_last_name: user.last_name
+    author_last_name: user.last_name,
+    author_headline: user.headline
   } as Post;
 }
 
@@ -107,6 +109,7 @@ export async function listPosts(userId: string, limit: number = 20, cursor?: str
       SELECT p.*, 
              u.first_name as author_first_name, 
              u.last_name as author_last_name,
+             u.headline as author_headline,
              (SELECT COUNT(*) FROM reactions r WHERE r.post_id = p.id AND r.type = 'like') as likes_count,
              (SELECT COUNT(*) > 0 FROM reactions r WHERE r.post_id = p.id AND r.user_id = $1 AND r.type = 'like') as has_liked,
              (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) as comments_count
@@ -144,6 +147,7 @@ export async function listUserPosts(userId: string): Promise<any[]> {
       SELECT p.*, 
              u.first_name as author_first_name, 
              u.last_name as author_last_name,
+             u.headline as author_headline,
              (SELECT COUNT(*) FROM reactions r WHERE r.post_id = p.id AND r.type = 'like') as likes_count,
              (SELECT COUNT(*) > 0 FROM reactions r WHERE r.post_id = p.id AND r.user_id = $1 AND r.type = 'like') as has_liked,
              (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) as comments_count

@@ -15,6 +15,7 @@ export interface Post {
     created_at: string;
     author_first_name: string;
     author_last_name: string;
+    author_headline?: string;
     likes_count: number;
     has_liked: boolean;
     comments_count: number;
