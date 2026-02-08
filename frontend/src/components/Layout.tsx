@@ -58,6 +58,27 @@ export default function Layout({ children, userEmail, currentUserId, onLogout }:
                                 Connections
                             </Link>
                             <Link
+                                to="/clubs"
+                                className={`${activeTab === 'clubs' ? 'text-primary font-semibold' : 'text-[#507395] dark:text-gray-400 hover:text-primary dark:hover:text-primary font-medium'} text-sm transition-colors flex items-center gap-1`}
+                            >
+                                <span className="material-symbols-outlined text-lg">groups</span>
+                                Clubs
+                            </Link>
+                            <Link
+                                to="/openings"
+                                className={`${activeTab === 'openings' ? 'text-primary font-semibold' : 'text-[#507395] dark:text-gray-400 hover:text-primary dark:hover:text-primary font-medium'} text-sm transition-colors flex items-center gap-1`}
+                            >
+                                <span className="material-symbols-outlined text-lg">work</span>
+                                Openings
+                            </Link>
+                            <Link
+                                to="/messages"
+                                className={`${activeTab === 'messages' ? 'text-primary font-semibold' : 'text-[#507395] dark:text-gray-400 hover:text-primary dark:hover:text-primary font-medium'} text-sm transition-colors flex items-center gap-1`}
+                            >
+                                <span className="material-symbols-outlined text-lg">mail</span>
+                                Messages
+                            </Link>
+                            <Link
                                 to="/notifications"
                                 className={`${activeTab === 'notifications' ? 'text-primary font-semibold' : 'text-[#507395] dark:text-gray-400 hover:text-primary dark:hover:text-primary font-medium'} text-sm transition-colors flex items-center gap-1`}
                             >

@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import type { Post, Comment } from '../types';
+import type { Comment, FeedItem, Post } from '../types';
 import { timeAgo } from '../utils/timeAgo';
 
 interface PostCardProps {
-    post: Post;
+    post: FeedItem | Post;
     authenticatedFetch: (url: string, options?: RequestInit) => Promise<Response>;
-    onLike: (post: Post) => void;
+    onLike: (post: any) => void;
     onCommentAdded: (postId: string) => void;
 }
 
@@ -60,17 +60,50 @@ export default function PostCard({ post, authenticatedFetch, onLike, onCommentAd
         }
     };
 
+    if (post.type === 'opening') {
+        return (
+            <article className="bg-white dark:bg-[#1a242f] rounded-xl shadow-sm border border-[#e8edf3] dark:border-gray-800 overflow-hidden hover:border-primary/20 transition-all">
+                <div className="p-5">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="h-11 w-11 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold overflow-hidden">
+                            <span className="material-symbols-outlined">work</span>
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-bold text-[#0e141b] dark:text-white leading-tight">
+                                Opportunity: {post.title}
+                            </h3>
+                            <div className="flex items-center gap-1.5 text-xs text-[#507395] dark:text-gray-400">
+                                <span className="text-primary font-semibold">{post.club_name}</span>
+                                <span>•</span>
+                                <span>{timeAgo(post.created_at)}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="text-[#0e141b] dark:text-gray-200 text-sm leading-relaxed mb-4 whitespace-pre-wrap">
+                        <p>{post.content}</p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                             <span className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-xs">📍 {post.location_city}, {post.location_country}</span>
+                             <span className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-xs">💼 {post.job_type}</span>
+                             <span className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-xs">🎓 {post.experience_level}</span>
+                        </div>
+                    </div>
+                    <button className="w-full py-2 bg-primary text-white rounded-lg font-bold text-sm">Apply Now</button>
+                </div>
+            </article>
+        );
+    }
+
     return (
         <article className="bg-white dark:bg-[#1a242f] rounded-xl shadow-sm border border-[#e8edf3] dark:border-gray-800 overflow-hidden hover:border-primary/20 transition-all">
             <div className="p-5">
                 {/* Post Header */}
                 <div className="flex items-center gap-3 mb-4">
                     <div className="h-11 w-11 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold overflow-hidden">
-                        {post.author_first_name?.[0]}
+                        {post.author_first_name?.[0] || post.club_name?.[0]}
                     </div>
                     <div>
                         <h3 className="text-sm font-bold text-[#0e141b] dark:text-white leading-tight">
-                            {post.author_first_name} {post.author_last_name}
+                            {post.club_name ? post.club_name : `${post.author_first_name} ${post.author_last_name}`}
                         </h3>
                         <div className="flex items-center gap-1.5 text-xs text-[#507395] dark:text-gray-400">
                             <span>{post.author_headline || 'Student'}</span>

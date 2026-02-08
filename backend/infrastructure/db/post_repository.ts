@@ -12,13 +12,13 @@ export interface Post {
   author_headline?: string;
 }
 
-export async function createPost(authorId: string, content: string, visibility: 'public' | 'connections_only' = 'public'): Promise<Post> {
+export async function createPost(authorId: string, content: string, visibility: 'public' | 'connections_only' = 'public', clubId?: string): Promise<Post> {
   const query = `
-    INSERT INTO posts (author_id, content, visibility)
-    VALUES ($1, $2, $3)
+    INSERT INTO posts (author_id, content, visibility, club_id)
+    VALUES ($1, $2, $3, $4)
     RETURNING *;
   `;
-  const result = await pool.query(query, [authorId, content, visibility]);
+  const result = await pool.query(query, [authorId, content, visibility, clubId || null]);
   const post = result.rows[0];
 
   // We need to fetch the author details for the newly created post to match the interface
@@ -104,18 +104,47 @@ export async function getPostReactions(postId: string): Promise<{ count: number,
   return { count: 0, user_has_liked: false, user_id: '' }; // Placeholder if needed
 }
 
-export async function listPosts(userId: string, limit: number = 20, cursor?: string): Promise<any[]> {
+export interface FeedItem {
+  id: string;
+  content: string;
+  created_at: Date;
+  type: 'post' | 'opening';
+  author_first_name: string | null;
+  author_last_name: string | null;
+  author_headline: string | null;
+  club_name: string | null;
+  likes_count: number;
+  has_liked: boolean;
+  comments_count: number;
+  title: string | null;
+  job_type: string | null;
+  experience_level: string | null;
+  location_city: string | null;
+  location_country: string | null;
+}
+
+export async function listPosts(userId: string, limit: number = 20, cursor?: string, clubId?: string): Promise<Post[]> {
   let query = `
       SELECT p.*, 
              u.first_name as author_first_name, 
              u.last_name as author_last_name,
              u.headline as author_headline,
+             cl.name as club_name,
              (SELECT COUNT(*) FROM reactions r WHERE r.post_id = p.id AND r.type = 'like') as likes_count,
              (SELECT COUNT(*) > 0 FROM reactions r WHERE r.post_id = p.id AND r.user_id = $1 AND r.type = 'like') as has_liked,
              (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) as comments_count
       FROM posts p
       JOIN users u ON p.author_id = u.id
-      WHERE (
+      LEFT JOIN clubs cl ON p.club_id = cl.id
+      WHERE 1=1
+    `;
+  const values: any[] = [userId, limit];
+
+  if (clubId) {
+    query += ' AND p.club_id = $3';
+    values.push(clubId);
+  } else {
+    query += ` AND (
         p.visibility = 'public' 
         OR p.author_id = $1
         OR EXISTS (
@@ -127,12 +156,16 @@ export async function listPosts(userId: string, limit: number = 20, cursor?: str
                 (c.receiver_id = $1 AND c.requester_id = p.author_id)
             )
         )
-      )
-    `;
-  const values: any[] = [userId, limit];
+        OR EXISTS (
+            SELECT 1 FROM club_followers cf
+            WHERE cf.user_id = $1 AND cf.club_id = p.club_id
+        )
+      )`;
+  }
 
   if (cursor) {
-    query += ' AND p.created_at < $3';
+    const cursorIdx = values.length + 1;
+    query += ` AND p.created_at < $${cursorIdx}`;
     values.push(cursor);
   }
 
@@ -142,7 +175,7 @@ export async function listPosts(userId: string, limit: number = 20, cursor?: str
   return result.rows;
 }
 
-export async function listUserPosts(userId: string): Promise<any[]> {
+export async function listUserPosts(userId: string): Promise<Post[]> {
   const query = `
       SELECT p.*, 
              u.first_name as author_first_name, 
@@ -164,4 +197,67 @@ export async function getPost(postId: string): Promise<Post | null> {
   const query = 'SELECT * FROM posts WHERE id = $1';
   const result = await pool.query(query, [postId]);
   return result.rows[0] as Post || null;
+}
+
+export async function getAggregatedFeed(userId: string, limit: number = 20, cursor?: string): Promise<FeedItem[]> {
+  const postsPart = `
+      SELECT p.id, p.content, p.created_at, 'post' as type,
+             u.first_name as author_first_name,
+             u.last_name as author_last_name,
+             u.headline as author_headline,
+             cl.name as club_name,
+             (SELECT COUNT(*) FROM reactions r WHERE r.post_id = p.id AND r.type = 'like') as likes_count,
+             (SELECT COUNT(*) > 0 FROM reactions r WHERE r.post_id = p.id AND r.user_id = $1 AND r.type = 'like') as has_liked,
+             (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) as comments_count,
+             null as title, null as job_type, null as experience_level, null as location_city, null as location_country
+      FROM posts p
+      JOIN users u ON p.author_id = u.id
+      LEFT JOIN clubs cl ON p.club_id = cl.id
+      WHERE (
+        p.visibility = 'public'
+        OR p.author_id = $1
+        OR EXISTS (
+            SELECT 1 FROM connections conn
+            WHERE conn.status = 'accepted'
+            AND (
+                (conn.requester_id = $1 AND conn.receiver_id = p.author_id)
+                OR
+                (conn.receiver_id = $1 AND conn.requester_id = p.author_id)
+            )
+        )
+        OR EXISTS (
+            SELECT 1 FROM club_followers cf
+            WHERE cf.user_id = $1 AND cf.club_id = p.club_id
+        )
+      )
+    `;
+
+  const openingsPart = `
+      SELECT o.id, o.description as content, o.created_at, 'opening' as type,
+             null as author_first_name, null as author_last_name, null as author_headline,
+             cl.name as club_name,
+             0 as likes_count, false as has_liked, 0 as comments_count,
+             o.title, o.job_type, o.experience_level, o.location_city, o.location_country
+      FROM openings o
+      JOIN clubs cl ON o.club_id = cl.id
+    `;
+
+  let combinedQuery = `
+        SELECT * FROM (
+            (${postsPart})
+            UNION ALL
+            (${openingsPart})
+        ) combined
+    `;
+
+  const values: any[] = [userId, limit];
+  if (cursor) {
+    combinedQuery += ' WHERE created_at < $3';
+    values.push(cursor);
+  }
+
+  combinedQuery += ' ORDER BY created_at DESC LIMIT $2';
+
+  const result = await pool.query(combinedQuery, values);
+  return result.rows;
 }
