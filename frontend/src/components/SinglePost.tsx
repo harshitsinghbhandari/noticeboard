@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Post } from '../types';
+import type { Post } from '../types';
 import PostCard from './PostCard';
 
 interface SinglePostProps {
@@ -56,7 +56,7 @@ export default function SinglePost({ postId, authenticatedFetch, onBack }: Singl
         }
     };
 
-    const handleCommentAdded = (postId: string) => {
+    const handleCommentAdded = (_postId: string) => {
         if (!post) return;
         setPost({ ...post, comments_count: Number(post.comments_count) + 1 });
     };

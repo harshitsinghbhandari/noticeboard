@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Post, Comment } from '../types';
+import type { Post, Comment } from '../types';
 import { Button } from './ui/Button';
 import { Card, CardHeader, CardContent, CardFooter } from './ui/Card';
 import { Input } from './ui/Input';
@@ -52,7 +52,7 @@ export default function PostCard({ post, authenticatedFetch, onLike, onCommentAd
                 body: JSON.stringify({ content: newComment }),
             });
             if (res.ok) {
-                const comment = await res.json();
+                await res.json();
                 // Depending on API response, we append using the response
                 // But we need the author info. Backend usually returns it or we optimistically add it.
                 // Assuming backend returns complete comment object or we refetch.

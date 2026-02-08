@@ -16,7 +16,6 @@ export interface Post {
     author_first_name: string;
     author_last_name: string;
     likes_count: number;
-    has_likes?: boolean; // API might return has_liked or has_likes, checked Feed.tsx uses has_liked. checking backend...
     has_liked: boolean;
     comments_count: number;
     visibility: 'public' | 'connections_only';
@@ -28,6 +27,7 @@ export interface UserProfile {
     first_name: string;
     last_name: string;
     about?: string;
+    headline?: string;
 }
 
 export interface Notification {

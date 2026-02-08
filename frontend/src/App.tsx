@@ -6,6 +6,7 @@ import Layout from './components/Layout';
 
 import Profile from './components/Profile';
 import SinglePost from './components/SinglePost';
+import type { Notification } from './types';
 
 // ⚠️ CHANGE ME: Update these values to match your Keycloak setup
 const KEYCLOAK_CONFIG = {
@@ -43,11 +44,11 @@ function App() {
   // Navigation State
   const [viewPostId, setViewPostId] = useState<string | null>(null);
 
-  const handleNotificationClick = (notification: any) => {
+  const handleNotificationClick = (notification: Notification) => {
     if (notification.type === 'like' || notification.type === 'comment') {
       if (notification.post_id) {
         setViewPostId(notification.post_id);
-        setActiveTab('post' as any); // Force cast for now, will update state type next
+        setActiveTab('post');
       }
     }
   };
@@ -248,7 +249,6 @@ function App() {
       {activeTab === 'feed' && (
         <Feed
           authenticatedFetch={authenticatedFetch}
-          userId={keycloak.tokenParsed?.sub || ''}
         />
       )}
       {/* Notifications Tab */}
