@@ -1,0 +1,129 @@
+# ===============================
+# OS / Editor junk
+# ===============================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# JetBrains
+.idea/
+*.iml
+
+# Vim / Emacs
+*.swp
+*.swo
+*~
+.#*
+.elc
+
+# ===============================
+# Logs & temp files
+# ===============================
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+
+# ===============================
+# Environment / secrets
+# ===============================
+.env
+.env.*
+!.env.example
+secrets.*
+*.key
+*.pem
+
+# ===============================
+# Build / dist outputs
+# ===============================
+dist/
+build/
+out/
+target/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# ===============================
+# Dependency directories
+# ===============================
+node_modules/
+vendor/
+
+# ===============================
+# Python
+# ===============================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+ENV/
+
+# ===============================
+# Java / JVM
+# ===============================
+*.class
+*.jar
+*.war
+*.ear
+.gradle/
+build/
+
+# ===============================
+# Frontend
+# ===============================
+.npm/
+.yarn/
+.yarn-cache/
+.yarn-state.yml
+.pnpm-store/
+coverage/
+
+# ===============================
+# Databases
+# ===============================
+*.sqlite
+*.sqlite3
+*.db
+
+# ===============================
+# Archives
+# ===============================
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+
+# ===============================
+# Misc
+# ===============================
+.cache/
+.history/
+*.bak
+*.orig
+
+# ===============================
+# Helper files
+# ===============================
+create_structure.py
