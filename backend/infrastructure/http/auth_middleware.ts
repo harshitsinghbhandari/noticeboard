@@ -1,10 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import jwksRsa from 'jwks-rsa';
-import { upsertUser } from '../db/user_repository';
+import { upsertUser, EmailConflictError } from '../db/user_repository';
+
+if (!process.env.KEYCLOAK_JWKS_URI) {
+  throw new Error('KEYCLOAK_JWKS_URI not set');
+}
+
 
 const client = jwksRsa({
-    jwksUri: `${process.env.KEYCLOAK_URL}/realms/${process.env.KEYCLOAK_REALM}/protocol/openid-connect/certs`,
+    jwksUri: process.env.KEYCLOAK_JWKS_URI,
 });
 
 function getKey(header: jwt.JwtHeader, callback: jwt.SigningKeyCallback) {
@@ -48,7 +53,7 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
         getKey,
         {
             audience: 'account',
-            issuer: `${process.env.KEYCLOAK_URL}/realms/${process.env.KEYCLOAK_REALM}`,
+            issuer: process.env.KEYCLOAK_ISSUER,
             algorithms: ['RS256'],
         },
         async (err, decoded) => {
@@ -83,6 +88,11 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
                 req.user = user;
                 next();
             } catch (dbError) {
+                if (dbError instanceof EmailConflictError) {
+                    console.warn('Email conflict detected:', dbError.message);
+                    res.status(409).json({ error: 'Email already associated with another account' });
+                    return;
+                }
                 console.error('Database error during auth upsert:', dbError);
                 res.status(500).json({ error: 'Internal server error' });
             }

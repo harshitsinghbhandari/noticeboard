@@ -1,0 +1,66 @@
+import { pool } from './pool';
+
+export interface Connection {
+    id: string;
+    requester_id: string;
+    receiver_id: string;
+    status: 'pending' | 'accepted' | 'rejected';
+    created_at: Date;
+    updated_at: Date;
+}
+
+export async function createRequest(requesterId: string, receiverId: string): Promise<string> {
+    const query = `
+    INSERT INTO connections (requester_id, receiver_id, status)
+    VALUES ($1, $2, 'pending')
+    RETURNING id;
+  `;
+    try {
+        const result = await pool.query(query, [requesterId, receiverId]);
+        return result.rows[0].id;
+    } catch (error: any) {
+        if (error.code === '23505') { // unique_violation
+            throw new Error('Connection request already exists between these users');
+        }
+        throw error;
+    }
+}
+
+export async function updateStatus(connectionId: string, userId: string, status: 'accepted' | 'rejected'): Promise<void> {
+    // Ensure the user updating the status is the RECEIVER
+    const query = `
+    UPDATE connections
+    SET status = $1, updated_at = NOW()
+    WHERE id = $2 AND receiver_id = $3
+  `;
+    const result = await pool.query(query, [status, connectionId, userId]);
+    if (result.rowCount === 0) {
+        throw new Error('Connection not found or you are not authorized to update it');
+    }
+}
+
+export async function listIncoming(userId: string): Promise<Connection[]> {
+    const query = `
+    SELECT * FROM connections
+    WHERE receiver_id = $1 AND status = 'pending'
+    ORDER BY created_at DESC
+  `;
+    const result = await pool.query(query, [userId]);
+    return result.rows as Connection[];
+}
+
+export async function listOutgoing(userId: string): Promise<Connection[]> {
+    const query = `
+    SELECT * FROM connections
+    WHERE requester_id = $1
+    ORDER BY created_at DESC
+  `;
+    const result = await pool.query(query, [userId]);
+    return result.rows as Connection[];
+}
+
+export async function getConnection(id: string): Promise<Connection | null> {
+    const query = 'SELECT * FROM connections WHERE id = $1';
+    const result = await pool.query(query, [id]);
+    return result.rows[0] as Connection || null;
+}
