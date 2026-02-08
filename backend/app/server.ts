@@ -199,6 +199,19 @@ app.get('/users/:id/posts', authMiddleware, async (req, res) => {
     }
 });
 
+app.get('/posts/:id', authMiddleware, async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+    const { id } = req.params;
+    try {
+        const post = await getPost(id);
+        if (!post) return res.status(404).json({ error: 'Post not found' });
+        res.json(post);
+    } catch (error) {
+        console.error('Get post error', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 
 app.post('/posts/:id/comments', authMiddleware, async (req, res) => {
     if (!req.user) return res.status(401).json({ error: 'Unauthorized' });

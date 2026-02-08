@@ -2,8 +2,10 @@ import { useEffect, useState, useRef } from 'react';
 import Keycloak from 'keycloak-js';
 import Feed from './components/Feed';
 import Notifications from './components/Notifications';
+import Layout from './components/Layout';
 
-import ProfilePosts from './components/ProfilePosts';
+import Profile from './components/Profile';
+import SinglePost from './components/SinglePost';
 
 // ⚠️ CHANGE ME: Update these values to match your Keycloak setup
 const KEYCLOAK_CONFIG = {
@@ -15,11 +17,7 @@ const KEYCLOAK_CONFIG = {
 // Initialize Keycloak instance
 const keycloak = new Keycloak(KEYCLOAK_CONFIG);
 
-interface Profile {
-  about?: string;
-  error?: string;
-  // ... other fields from /me
-}
+
 
 interface Connection {
   id: string;
@@ -32,19 +30,32 @@ interface Connection {
 function App() {
   const isRun = useRef(false);
   const [authenticated, setAuthenticated] = useState(false);
-  const [activeTab, setActiveTab] = useState<'profile' | 'connections' | 'feed' | 'notifications'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'connections' | 'feed' | 'notifications' | 'post'>('profile');
 
-  // Profile State
-  const [profile, setProfile] = useState<any>(null); // Raw user data
-  const [about, setAbout] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<string | null>(null);
+
 
   // Connections State
   const [incoming, setIncoming] = useState<Connection[]>([]);
   const [outgoing, setOutgoing] = useState<Connection[]>([]);
   const [targetUserId, setTargetUserId] = useState('');
   const [connectStatus, setConnectStatus] = useState<string | null>(null);
+
+  // Navigation State
+  const [viewPostId, setViewPostId] = useState<string | null>(null);
+
+  const handleNotificationClick = (notification: any) => {
+    if (notification.type === 'like' || notification.type === 'comment') {
+      if (notification.post_id) {
+        setViewPostId(notification.post_id);
+        setActiveTab('post' as any); // Force cast for now, will update state type next
+      }
+    }
+  };
+
+  const handleBackToFeed = () => {
+    setViewPostId(null);
+    setActiveTab('feed');
+  };
 
   useEffect(() => {
     if (isRun.current) return;
@@ -64,8 +75,6 @@ function App() {
   }, []);
 
   const fetchInitialData = () => {
-    fetchMe();
-    fetchProfile();
     fetchConnections();
   };
 
@@ -80,47 +89,7 @@ function App() {
     });
   };
 
-  // --- Profile Actions ---
 
-  const fetchProfile = async () => {
-    try {
-      const res = await authenticatedFetch('http://localhost:3000/me/profile');
-      if (res.ok) {
-        const data = await res.json();
-        setAbout(data.about || '');
-      }
-    } catch (e) { console.error(e); }
-  };
-
-  const fetchMe = async () => {
-    try {
-      const res = await authenticatedFetch('http://localhost:3000/me');
-      const json = await res.json();
-      setProfile(json);
-    } catch (e) { setProfile({ error: 'Fetch failed' }); }
-  };
-
-  const handleSaveProfile = async () => {
-    setIsSaving(true);
-    setSaveStatus(null);
-    try {
-      const res = await authenticatedFetch('http://localhost:3000/me/profile', {
-        method: 'PUT',
-        body: JSON.stringify({ about })
-      });
-
-      if (res.ok) {
-        setSaveStatus('Profile saved successfully!');
-        setTimeout(() => setSaveStatus(null), 3000);
-      } else {
-        setSaveStatus('Failed to save.');
-      }
-    } catch (e) {
-      setSaveStatus('Error saving profile.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   // --- Connection Actions ---
 
@@ -172,82 +141,16 @@ function App() {
   }
 
   return (
-    <div className="p-8 font-sans max-w-4xl mx-auto">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold">Noticeboard</h1>
-        <div className="flex items-center space-x-4">
-          <span className="text-sm text-gray-600">
-            {profile?.email || 'Loading...'}
-          </span>
-          <button
-            onClick={() => keycloak.logout()}
-            className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 text-sm"
-          >
-            Logout
-          </button>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex border-b border-gray-200 mb-6">
-        <button
-          className={`px-4 py-2 font-medium ${activeTab === 'profile' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-          onClick={() => setActiveTab('profile')}
-        >
-          My Profile
-        </button>
-        <button
-          className={`px-4 py-2 font-medium ${activeTab === 'connections' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-          onClick={() => setActiveTab('connections')}
-        >
-          Connections
-        </button>
-        <button
-          className={`px-4 py-2 font-medium ${activeTab === 'feed' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-          onClick={() => setActiveTab('feed')}
-        >
-          Feed
-        </button>
-        <button
-          className={`px-4 py-2 font-medium ${activeTab === 'notifications' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-          onClick={() => setActiveTab('notifications')}
-        >
-          Notifications
-        </button>
-      </div>
+    <Layout
+      activeTab={activeTab}
+      setActiveTab={setActiveTab}
+      userEmail={keycloak.tokenParsed?.email}
+      onLogout={() => keycloak.logout()}
+    >
 
       {/* Profile Tab */}
       {activeTab === 'profile' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Edit Info</h3>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">About Me</label>
-              <textarea
-                value={about}
-                onChange={(e) => setAbout(e.target.value)}
-                className="w-full h-32 p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none resize-none"
-              />
-            </div>
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={handleSaveProfile}
-                disabled={isSaving}
-                className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-              >
-                {isSaving ? 'Saving...' : 'Save Profile'}
-              </button>
-              {saveStatus && <span className="text-sm text-gray-600">{saveStatus}</span>}
-            </div>
-          </div>
-
-          <div className="bg-gray-50 p-4 rounded border border-gray-200">
-            <h3 className="text-sm font-bold text-gray-500 mb-2">RAW USER DATA</h3>
-            <pre className="text-xs overflow-auto h-48">
-              {profile ? JSON.stringify(profile, null, 2) : 'Loading...'}
-            </pre>
-          </div>
-        </div>
+        <Profile authenticatedFetch={authenticatedFetch} />
       )}
 
       {/* Connections Tab */}
@@ -276,7 +179,7 @@ function App() {
 
             <div className="mt-4 text-xs text-gray-500">
               <p><strong>Note:</strong> You can find user IDs in the backend logs or by creating another user.</p>
-              <p>Your ID: <span className="font-mono bg-gray-100 p-1 rounded">{profile?.id}</span></p>
+              <p><strong>Note:</strong> You can find user IDs in the backend logs or by creating another user.</p>
             </div>
           </div>
 
@@ -343,13 +246,25 @@ function App() {
       )}
       {/* Feed Tab */}
       {activeTab === 'feed' && (
-        <Feed authenticatedFetch={authenticatedFetch} userId={profile?.id} />
+        <Feed
+          authenticatedFetch={authenticatedFetch}
+          userId={keycloak.tokenParsed?.sub || ''}
+        />
       )}
       {/* Notifications Tab */}
       {activeTab === 'notifications' && (
-        <Notifications authenticatedFetch={authenticatedFetch} />
+        <Notifications authenticatedFetch={authenticatedFetch} onNotificationClick={handleNotificationClick} />
       )}
-    </div>
+
+      {/* Single Post Tab (Hidden from Nav) */}
+      {activeTab === 'post' && viewPostId && (
+        <SinglePost
+          postId={viewPostId}
+          authenticatedFetch={authenticatedFetch}
+          onBack={handleBackToFeed}
+        />
+      )}
+    </Layout>
   );
 }
 

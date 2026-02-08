@@ -1,18 +1,7 @@
 import { useState, useEffect } from 'react';
-import { timeAgo } from '../utils/timeAgo';
-
-interface Post {
-    id: string;
-    author_id: string;
-    content: string;
-    created_at: string;
-    author_first_name: string;
-    author_last_name: string;
-    likes_count: number;
-    has_liked: boolean;
-    comments_count: number;
-    visibility: 'public' | 'connections_only';
-}
+import { Post } from '../types';
+import { Card, CardContent } from './ui/Card';
+import PostCard from './PostCard';
 
 interface ProfilePostsProps {
     authenticatedFetch: (url: string, options?: RequestInit) => Promise<Response>;
@@ -44,36 +33,54 @@ export default function ProfilePosts({ authenticatedFetch, userId }: ProfilePost
         }
     };
 
+    const handleLike = async (post: Post) => {
+        const updatedPosts = posts.map(p => {
+            if (p.id === post.id) {
+                return {
+                    ...p,
+                    has_liked: !p.has_liked,
+                    likes_count: p.has_liked ? Number(p.likes_count) - 1 : Number(p.likes_count) + 1
+                };
+            }
+            return p;
+        });
+        setPosts(updatedPosts);
+
+        try {
+            const method = post.has_liked ? 'DELETE' : 'POST';
+            await authenticatedFetch(`http://localhost:3000/posts/${post.id}/like`, { method });
+        } catch (error) {
+            console.error('Failed to toggle like', error);
+            fetchPosts();
+        }
+    };
+
+    const handleCommentAdded = (postId: string) => {
+        setPosts(posts.map(p => p.id === postId ? { ...p, comments_count: Number(p.comments_count) + 1 } : p));
+    };
+
+
     return (
-        <div className="mt-8">
-            <h3 className="text-xl font-bold mb-4">My Posts</h3>
+        <div className="space-y-4">
+            <h3 className="text-lg font-semibold px-1">My Posts</h3>
             {isLoading ? (
-                <p className="text-gray-500">Loading posts...</p>
+                <div className="text-center py-8 text-text-muted">Loading posts...</div>
             ) : posts.length === 0 ? (
-                <p className="text-gray-500 italic">No posts yet.</p>
+                <Card>
+                    <CardContent className="py-8 text-center text-text-muted italic">
+                        No posts yet.
+                    </CardContent>
+                </Card>
             ) : (
-                <div className="space-y-4">
-                    {posts.map((post) => (
-                        <div key={post.id} className="bg-white p-6 rounded shadow-sm border border-gray-200">
-                            <div className="flex justify-between items-start mb-2">
-                                <span className="text-xs text-gray-500">
-                                    {timeAgo(post.created_at)}
-                                </span>
-                                <span className={`text-[10px] px-2 py-0.5 rounded-full border ${post.visibility === 'public'
-                                    ? 'bg-green-50 text-green-600 border-green-200'
-                                    : 'bg-purple-50 text-purple-600 border-purple-200'
-                                    }`}>
-                                    {post.visibility === 'public' ? 'Public' : 'Connections'}
-                                </span>
-                            </div>
-                            <p className="text-gray-800 whitespace-pre-wrap mb-4">{post.content}</p>
-                            <div className="flex items-center space-x-4 text-sm text-gray-500">
-                                <span>{post.likes_count} Likes</span>
-                                <span>{post.comments_count} Comments</span>
-                            </div>
-                        </div>
-                    ))}
-                </div>
+                posts.map((post) => (
+                    <PostCard
+                        key={post.id}
+                        post={post}
+                        authenticatedFetch={authenticatedFetch}
+                        onLike={handleLike}
+                        onCommentAdded={handleCommentAdded}
+                    />
+                ))
             )}
         </div>
     );
