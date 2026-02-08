@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { Post } from '../types';
 import { Button } from './ui/Button';
 import { Textarea } from './ui/Textarea';
@@ -16,11 +16,7 @@ export default function Feed({ authenticatedFetch }: FeedProps) {
     const [isPosting, setIsPosting] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        fetchPosts();
-    }, []);
-
-    const fetchPosts = async () => {
+    const fetchPosts = useCallback(async () => {
         setIsLoading(true);
         try {
             const res = await authenticatedFetch('http://localhost:3000/posts');
@@ -33,7 +29,11 @@ export default function Feed({ authenticatedFetch }: FeedProps) {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [authenticatedFetch]);
+
+    useEffect(() => {
+        fetchPosts();
+    }, [fetchPosts]);
 
     const handlePost = async () => {
         if (!newPostContent.trim()) return;

@@ -202,6 +202,11 @@ app.get('/users/:id/posts', authMiddleware, async (req, res) => {
 app.get('/posts/:id', authMiddleware, async (req, res) => {
     if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
     const { id } = req.params;
+
+    if (typeof id !== 'string') {
+        return res.status(400).json({ error: 'Invalid ID' });
+    }
+
     try {
         const post = await getPost(id);
         if (!post) return res.status(404).json({ error: 'Post not found' });

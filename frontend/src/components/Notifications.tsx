@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { timeAgo } from '../utils/timeAgo';
 import type { Notification } from '../types';
 
@@ -11,11 +11,7 @@ export default function Notifications({ authenticatedFetch, onNotificationClick 
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        fetchNotifications();
-    }, []);
-
-    const fetchNotifications = async () => {
+    const fetchNotifications = useCallback(async () => {
         setIsLoading(true);
         try {
             const res = await authenticatedFetch('http://localhost:3000/notifications');
@@ -28,7 +24,11 @@ export default function Notifications({ authenticatedFetch, onNotificationClick 
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [authenticatedFetch]);
+
+    useEffect(() => {
+        fetchNotifications();
+    }, [fetchNotifications]);
 
     const handleClick = async (notification: Notification) => {
         // Mark as read if not already

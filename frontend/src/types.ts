@@ -41,3 +41,5 @@ export interface Notification {
     actor_first_name: string;
     actor_last_name: string;
 }
+
+export type AuthenticatedFetch = (url: string, options?: RequestInit) => Promise<Response>;

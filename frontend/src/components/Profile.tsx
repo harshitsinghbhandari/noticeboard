@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useParams } from 'react-router-dom';
 import { Button } from './ui/Button';
 import { Card, CardHeader, CardContent } from './ui/Card';
 import { Textarea } from './ui/Textarea';
@@ -7,20 +8,19 @@ import type { UserProfile } from '../types';
 
 interface ProfileProps {
     authenticatedFetch: (url: string, options?: RequestInit) => Promise<Response>;
-    userId?: string;
+    currentUserId?: string;
 }
 
-export default function Profile({ authenticatedFetch }: ProfileProps) {
+export default function Profile({ authenticatedFetch, currentUserId }: ProfileProps) {
+    const { id } = useParams();
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [isEditing, setIsEditing] = useState(false);
     const [about, setAbout] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
-    useEffect(() => {
-        fetchProfileData();
-    }, []);
+    const isMe = id === 'me' || (currentUserId && id === currentUserId);
 
-    const fetchProfileData = async () => {
+    const fetchProfileData = useCallback(async () => {
         try {
             // Get basic user info
             const meRes = await authenticatedFetch('http://localhost:3000/me');
@@ -40,7 +40,17 @@ export default function Profile({ authenticatedFetch }: ProfileProps) {
         } catch (error) {
             console.error('Failed to fetch profile', error);
         }
-    };
+    }, [authenticatedFetch]);
+
+    useEffect(() => {
+        if (isMe) {
+            fetchProfileData();
+        } else {
+            // TODO: Implement viewing other profiles when backend supports it
+            console.log('Viewing other profile:', id);
+            setProfile(null);
+        }
+    }, [id, currentUserId, isMe, fetchProfileData]);
 
     const handleSave = async () => {
         setIsSaving(true);

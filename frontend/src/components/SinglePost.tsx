@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { Post } from '../types';
 import PostCard from './PostCard';
 
@@ -13,11 +13,7 @@ export default function SinglePost({ postId, authenticatedFetch, onBack }: Singl
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        fetchPost();
-    }, [postId]);
-
-    const fetchPost = async () => {
+    const fetchPost = useCallback(async () => {
         setIsLoading(true);
         setError(null);
         try {
@@ -37,7 +33,11 @@ export default function SinglePost({ postId, authenticatedFetch, onBack }: Singl
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [authenticatedFetch, postId]);
+
+    useEffect(() => {
+        fetchPost();
+    }, [postId, fetchPost]);
 
     const handleLike = async (post: Post) => {
         if (!post) return;
@@ -56,7 +56,7 @@ export default function SinglePost({ postId, authenticatedFetch, onBack }: Singl
         }
     };
 
-    const handleCommentAdded = (_postId: string) => {
+    const handleCommentAdded = () => {
         if (!post) return;
         setPost({ ...post, comments_count: Number(post.comments_count) + 1 });
     };

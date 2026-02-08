@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { Post } from '../types';
 import { Card, CardContent } from './ui/Card';
 import PostCard from './PostCard';
@@ -12,13 +12,7 @@ export default function ProfilePosts({ authenticatedFetch, userId }: ProfilePost
     const [posts, setPosts] = useState<Post[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        if (userId) {
-            fetchPosts();
-        }
-    }, [userId]);
-
-    const fetchPosts = async () => {
+    const fetchPosts = useCallback(async () => {
         setIsLoading(true);
         try {
             const res = await authenticatedFetch(`http://localhost:3000/users/${userId}/posts`);
@@ -31,7 +25,13 @@ export default function ProfilePosts({ authenticatedFetch, userId }: ProfilePost
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [authenticatedFetch, userId]);
+
+    useEffect(() => {
+        if (userId) {
+            fetchPosts();
+        }
+    }, [userId, fetchPosts]);
 
     const handleLike = async (post: Post) => {
         const updatedPosts = posts.map(p => {
