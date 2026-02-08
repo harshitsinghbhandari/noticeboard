@@ -7,6 +7,12 @@ export interface Connection {
     status: 'pending' | 'accepted' | 'rejected';
     created_at: Date;
     updated_at: Date;
+    requester_first_name?: string;
+    requester_last_name?: string;
+    requester_headline?: string;
+    receiver_first_name?: string;
+    receiver_last_name?: string;
+    receiver_headline?: string;
 }
 
 export async function createRequest(requesterId: string, receiverId: string): Promise<string> {
@@ -41,9 +47,14 @@ export async function updateStatus(connectionId: string, userId: string, status:
 
 export async function listIncoming(userId: string): Promise<Connection[]> {
     const query = `
-    SELECT * FROM connections
-    WHERE receiver_id = $1 AND status = 'pending'
-    ORDER BY created_at DESC
+    SELECT c.*,
+           u.first_name as requester_first_name,
+           u.last_name as requester_last_name,
+           u.headline as requester_headline
+    FROM connections c
+    JOIN users u ON c.requester_id = u.id
+    WHERE c.receiver_id = $1 AND c.status = 'pending'
+    ORDER BY c.created_at DESC
   `;
     const result = await pool.query(query, [userId]);
     return result.rows as Connection[];
@@ -51,9 +62,14 @@ export async function listIncoming(userId: string): Promise<Connection[]> {
 
 export async function listOutgoing(userId: string): Promise<Connection[]> {
     const query = `
-    SELECT * FROM connections
-    WHERE requester_id = $1
-    ORDER BY created_at DESC
+    SELECT c.*,
+           u.first_name as receiver_first_name,
+           u.last_name as receiver_last_name,
+           u.headline as receiver_headline
+    FROM connections c
+    JOIN users u ON c.receiver_id = u.id
+    WHERE c.requester_id = $1
+    ORDER BY c.created_at DESC
   `;
     const result = await pool.query(query, [userId]);
     return result.rows as Connection[];

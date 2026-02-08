@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Button } from './ui/Button';
 
 interface LayoutProps {
     children: ReactNode;
@@ -14,78 +13,88 @@ export default function Layout({ children, userEmail, currentUserId, onLogout }:
     const activeTab = location.pathname.split('/')[1] || 'feed';
 
     return (
-        <div className="min-h-screen bg-surface-muted font-sans text-text-primary">
-            {/* Top Navigation */}
-            <nav className="sticky top-0 z-50 w-full border-b border-border bg-surface/80 backdrop-blur-md">
-                <div className="max-w-screen-md mx-auto px-4 h-14 flex items-center justify-between">
-                    {/* App Name */}
-                    <div className="flex items-center gap-4">
-                        <Link
-                            to="/feed"
-                            className="text-lg font-bold text-primary hover:opacity-80 transition-opacity"
-                        >
-                            Noticeboard
+        <div className="min-h-screen bg-background-light dark:bg-background-dark text-[#0e141b] dark:text-gray-100">
+            {/* Top Navigation Bar */}
+            <header className="sticky top-0 z-50 w-full bg-white dark:bg-[#1a242f] border-b border-[#e8edf3] dark:border-gray-800 px-4 md:px-10 py-3">
+                <div className="max-w-[1200px] mx-auto flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-8">
+                        {/* Logo */}
+                        <Link to="/feed" className="flex items-center gap-2.5">
+                            <div className="bg-primary text-white p-1.5 rounded-lg flex items-center justify-center">
+                                <span className="material-symbols-outlined text-2xl">school</span>
+                            </div>
+                            <h1 className="text-xl font-bold tracking-tight text-[#0e141b] dark:text-white hidden sm:block">CampusConnect</h1>
                         </Link>
+
+                        {/* Search Bar */}
+                        <label className="hidden md:flex flex-col min-w-40 h-10 max-w-64">
+                            <div className="flex w-full flex-1 items-stretch rounded-lg h-full bg-[#e8edf3] dark:bg-gray-800">
+                                <div className="text-[#507395] flex items-center justify-center pl-4">
+                                    <span className="material-symbols-outlined text-xl">search</span>
+                                </div>
+                                <input
+                                    className="w-full border-none bg-transparent focus:ring-0 h-full placeholder:text-[#507395] px-2 text-sm font-normal"
+                                    placeholder="Search campus..."
+                                />
+                            </div>
+                        </label>
                     </div>
 
-                    {/* Navigation Items */}
-                    <div className="flex items-center gap-2">
-                        <Link
-                            to="/feed"
-                            className={`p-2 rounded-md transition-colors ${activeTab === 'feed' ? 'bg-primary/10 text-primary' : 'text-text-muted hover:bg-surface-muted hover:text-text-primary'}`}
-                            title="Feed"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
-                        </Link>
+                    {/* Nav Actions */}
+                    <div className="flex items-center gap-4">
+                        <nav className="hidden md:flex items-center gap-6 mr-4">
+                            <Link
+                                to="/feed"
+                                className={`${activeTab === 'feed' ? 'text-primary font-semibold' : 'text-[#507395] dark:text-gray-400 hover:text-primary dark:hover:text-primary font-medium'} text-sm transition-colors flex items-center gap-1`}
+                            >
+                                <span className="material-symbols-outlined text-lg">home</span>
+                                Feed
+                            </Link>
+                            <Link
+                                to="/connections"
+                                className={`${activeTab === 'connections' ? 'text-primary font-semibold' : 'text-[#507395] dark:text-gray-400 hover:text-primary dark:hover:text-primary font-medium'} text-sm transition-colors flex items-center gap-1`}
+                            >
+                                <span className="material-symbols-outlined text-lg">group</span>
+                                Connections
+                            </Link>
+                            <Link
+                                to="/notifications"
+                                className={`${activeTab === 'notifications' ? 'text-primary font-semibold' : 'text-[#507395] dark:text-gray-400 hover:text-primary dark:hover:text-primary font-medium'} text-sm transition-colors flex items-center gap-1`}
+                            >
+                                <span className="material-symbols-outlined text-lg">notifications</span>
+                                Notifications
+                            </Link>
+                        </nav>
 
-                        <Link
-                            to="/connections"
-                            className={`p-2 rounded-md transition-colors ${activeTab === 'connections' ? 'bg-primary/10 text-primary' : 'text-text-muted hover:bg-surface-muted hover:text-text-primary'}`}
-                            title="Connections"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
-                        </Link>
+                        <div className="flex items-center gap-2">
+                            {/* Logout */}
+                            <button
+                                onClick={onLogout}
+                                className="p-2 text-[#507395] dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                                title="Logout"
+                            >
+                                <span className="material-symbols-outlined">logout</span>
+                            </button>
 
-                        <Link
-                            to="/notifications"
-                            className={`p-2 rounded-md transition-colors ${activeTab === 'notifications' ? 'bg-primary/10 text-primary' : 'text-text-muted hover:bg-surface-muted hover:text-text-primary'}`}
-                            title="Notifications"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>
-                        </Link>
-
-                        <div className="h-6 w-px bg-border mx-2"></div>
-
-                        {/* Profile Dropdown Trigger (Simple for now) */}
-                        <Link
-                            to={`/profile/${currentUserId || 'me'}`}
-                            className={`flex items-center gap-2 p-1 pl-2 pr-3 rounded-full border transition-colors ${activeTab === 'profile' ? 'border-primary bg-primary/5 text-primary' : 'border-transparent hover:bg-surface-muted text-text-muted hover:text-text-primary'}`}
-                            title="Profile"
-                        >
-                            <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
-                                {userEmail ? userEmail[0].toUpperCase() : 'U'}
-                            </div>
-                            <span className="text-sm font-medium hidden sm:block">
-                                {userEmail?.split('@')[0]}
-                            </span>
-                        </Link>
-
-                        {/* Logout - could be in dropdown but putting here for simplicity as requested 'Profile dropdown (right)' - technically this is part of profile area actions */}
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-danger hover:text-danger hover:bg-danger/10 ml-1"
-                            onClick={onLogout}
-                            title="Logout"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1-2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" x2="9" y1="12" y2="12" /></svg>
-                        </Button>
+                            {/* Profile Menu */}
+                            <Link
+                                to={`/profile/${currentUserId || 'me'}`}
+                                className="flex items-center gap-2 pl-2 border-l border-gray-200 dark:border-gray-700 ml-2"
+                            >
+                                <div className="h-8 w-8 rounded-full bg-primary/20 border border-primary/30 overflow-hidden">
+                                    <div className="h-full w-full flex items-center justify-center text-primary font-bold text-xs">
+                                        {userEmail?.[0].toUpperCase() || 'U'}
+                                    </div>
+                                </div>
+                                <span className="material-symbols-outlined text-gray-400">expand_more</span>
+                            </Link>
+                        </div>
                     </div>
                 </div>
-            </nav>
+            </header>
 
-            {/* Main Content */}
-            <main className="max-w-screen-md mx-auto px-4 py-6">
+            {/* Main Content Area */}
+            <main className="max-w-[1200px] mx-auto px-4 py-8">
                 {children}
             </main>
         </div>
