@@ -124,7 +124,7 @@ function AppContent() {
               <Route path="/feed" element={<Feed authenticatedFetch={authenticatedFetch} />} />
               <Route path="/connections" element={<Connections authenticatedFetch={authenticatedFetch} />} />
               <Route path="/clubs" element={<Clubs authenticatedFetch={authenticatedFetch} />} />
-              <Route path="/clubs/:id" element={<ClubProfile authenticatedFetch={authenticatedFetch} />} />
+              <Route path="/clubs/:id" element={<ClubProfile authenticatedFetch={authenticatedFetch} currentUserId={parsedToken?.sub} />} />
               <Route path="/openings" element={<Openings authenticatedFetch={authenticatedFetch} />} />
               <Route path="/messages" element={<Messages authenticatedFetch={authenticatedFetch} />} />
               <Route path="/notifications" element={<NotificationsWithNavigation authenticatedFetch={authenticatedFetch} />} />

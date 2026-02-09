@@ -211,8 +211,14 @@ app.post('/posts', authMiddleware, async (req, res) => {
         return res.status(400).json({ error: 'Content is required' });
     }
 
-    if (club_id && !req.user.roles.includes('CLUB_CONVENER')) {
-        return res.status(403).json({ error: 'Only club conveners can post as a club' });
+    if (club_id) {
+        if (!req.user.roles.includes('CLUB_CONVENER')) {
+            return res.status(403).json({ error: 'Only club conveners can post as a club' });
+        }
+        const club = await getClub(club_id);
+        if (!club || club.admin_id !== req.user.id) {
+            return res.status(403).json({ error: 'Forbidden: You are not authorized to post for this club' });
+        }
     }
 
     const validVisibility = ['public', 'connections_only'];
@@ -449,7 +455,7 @@ app.post('/clubs',
         }
     const { name, description, website_url } = req.body;
     try {
-        const club = await createClub(name, description, website_url);
+        const club = await createClub(name, description, req.user!.id, website_url);
         res.status(201).json(club);
     } catch (error) {
         console.error('Create club error', error);
@@ -468,8 +474,13 @@ app.put('/clubs/:id',
         }
         const { name, description, website_url } = req.body;
         try {
+            const existingClub = await getClub(req.params.id);
+            if (!existingClub) return res.status(404).json({ error: 'Club not found' });
+            if (existingClub.admin_id !== req.user!.id) {
+                return res.status(403).json({ error: 'Forbidden: You are not the admin of this club' });
+            }
+
             const club = await updateClub(req.params.id, name, description, website_url);
-            if (!club) return res.status(404).json({ error: 'Club not found' });
             res.json(club);
         } catch (error) {
             console.error('Update club error', error);
@@ -480,6 +491,12 @@ app.put('/clubs/:id',
 
 app.delete('/clubs/:id', authMiddleware, requireRole('CLUB_ADMIN'), async (req, res) => {
     try {
+        const existingClub = await getClub(req.params.id);
+        if (!existingClub) return res.status(404).json({ error: 'Club not found' });
+        if (existingClub.admin_id !== req.user!.id) {
+            return res.status(403).json({ error: 'Forbidden: You are not the admin of this club' });
+        }
+
         await deleteClub(req.params.id);
         res.status(204).send();
     } catch (error) {
@@ -564,6 +581,10 @@ app.post('/openings',
         }
     const { club_id, title, description, location_city, location_country, job_type, experience_level } = req.body;
     try {
+        const club = await getClub(club_id);
+        if (!club || club.admin_id !== req.user!.id) {
+            return res.status(403).json({ error: 'Forbidden: You are not authorized to create openings for this club' });
+        }
         const opening = await createOpening({ club_id, title, description, location_city, location_country, job_type, experience_level });
         res.status(201).json(opening);
     } catch (error) {
@@ -577,8 +598,15 @@ app.put('/openings/:id',
     requireRole('CLUB_CONVENER'),
     async (req, res) => {
         try {
+            const existingOpening = await getOpening(req.params.id);
+            if (!existingOpening) return res.status(404).json({ error: 'Opening not found' });
+
+            const club = await getClub(existingOpening.club_id);
+            if (!club || club.admin_id !== req.user!.id) {
+                return res.status(403).json({ error: 'Forbidden: You are not authorized to edit openings for this club' });
+            }
+
             const opening = await updateOpening(req.params.id, req.body);
-            if (!opening) return res.status(404).json({ error: 'Opening not found' });
             res.json(opening);
         } catch (error) {
             console.error('Update opening error', error);
@@ -589,6 +617,14 @@ app.put('/openings/:id',
 
 app.delete('/openings/:id', authMiddleware, requireRole('CLUB_CONVENER'), async (req, res) => {
     try {
+        const existingOpening = await getOpening(req.params.id);
+        if (!existingOpening) return res.status(404).json({ error: 'Opening not found' });
+
+        const club = await getClub(existingOpening.club_id);
+        if (!club || club.admin_id !== req.user!.id) {
+            return res.status(403).json({ error: 'Forbidden: You are not authorized to delete openings for this club' });
+        }
+
         await deleteOpening(req.params.id);
         res.status(204).send();
     } catch (error) {

@@ -53,6 +53,7 @@ export interface Club {
     name: string;
     description: string;
     website_url?: string;
+    admin_id?: string;
     created_at: string;
     updated_at: string;
     is_following?: boolean;
