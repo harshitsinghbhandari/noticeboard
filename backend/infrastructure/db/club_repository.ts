@@ -5,14 +5,15 @@ export interface Club {
     name: string;
     description: string;
     website_url: string;
+    admin_id?: string;
     created_at: string;
     updated_at: string;
 }
 
-export async function createClub(name: string, description: string, websiteUrl?: string): Promise<Club> {
+export async function createClub(name: string, description: string, adminId: string, websiteUrl?: string): Promise<Club> {
     const res = await pool.query(
-        'INSERT INTO clubs (name, description, website_url) VALUES ($1, $2, $3) RETURNING *',
-        [name, description, websiteUrl]
+        'INSERT INTO clubs (name, description, admin_id, website_url) VALUES ($1, $2, $3, $4) RETURNING *',
+        [name, description, adminId, websiteUrl]
     );
     return res.rows[0];
 }

@@ -4,7 +4,7 @@ import type { Club, Post, Opening, AuthenticatedFetch } from '../types';
 import { Button } from './ui/Button';
 import PostCard from './PostCard';
 
-export default function ClubProfile({ authenticatedFetch }: { authenticatedFetch: AuthenticatedFetch }) {
+export default function ClubProfile({ authenticatedFetch, currentUserId }: { authenticatedFetch: AuthenticatedFetch, currentUserId?: string }) {
   const { id } = useParams();
   const [club, setClub] = useState<Club | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -57,12 +57,21 @@ export default function ClubProfile({ authenticatedFetch }: { authenticatedFetch
   if (loading) return <div className="p-4">Loading club...</div>;
   if (!club) return <div className="p-4">Club not found</div>;
 
+  const isAdmin = club.admin_id === currentUserId;
+
   return (
     <div className="max-w-4xl mx-auto p-4">
       <div className="bg-white p-6 rounded-lg shadow border border-gray-200 mb-6">
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-3xl font-bold">{club.name}</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-bold">{club.name}</h1>
+              {isAdmin && (
+                <span className="bg-primary/10 text-primary text-xs font-bold px-2 py-1 rounded-full border border-primary/20">
+                  Admin
+                </span>
+              )}
+            </div>
             {club.website_url && (
               <a href={club.website_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                 {club.website_url}

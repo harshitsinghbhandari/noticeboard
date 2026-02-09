@@ -14,14 +14,14 @@ describe('club_repository', () => {
     });
 
     it('should create a club', async () => {
-        const mockClub = { id: '1', name: 'Test Club', description: 'Test Desc' };
+        const mockClub = { id: '1', name: 'Test Club', description: 'Test Desc', admin_id: 'user-1' };
         (pool.query as any).mockResolvedValue({ rows: [mockClub] });
 
-        const club = await createClub('Test Club', 'Test Desc');
+        const club = await createClub('Test Club', 'Test Desc', 'user-1');
         expect(club).toEqual(mockClub);
         expect(pool.query).toHaveBeenCalledWith(
             expect.stringContaining('INSERT INTO clubs'),
-            ['Test Club', 'Test Desc', undefined]
+            ['Test Club', 'Test Desc', 'user-1', undefined]
         );
     });
 
