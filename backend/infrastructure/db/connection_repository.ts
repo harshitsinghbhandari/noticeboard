@@ -80,3 +80,33 @@ export async function getConnection(id: string): Promise<Connection | null> {
     const result = await pool.query(query, [id]);
     return result.rows[0] as Connection || null;
 }
+
+export async function listConnections(userId: string): Promise<Connection[]> {
+    const query = `
+    SELECT c.*,
+           u.first_name as requester_first_name,
+           u.last_name as requester_last_name,
+           u.headline as requester_headline,
+           u2.first_name as receiver_first_name,
+           u2.last_name as receiver_last_name,
+           u2.headline as receiver_headline
+    FROM connections c
+    JOIN users u ON c.requester_id = u.id
+    JOIN users u2 ON c.receiver_id = u2.id
+    WHERE (c.requester_id = $1 OR c.receiver_id = $1)
+      AND c.status = 'accepted'
+    ORDER BY c.updated_at DESC
+  `;
+    const result = await pool.query(query, [userId]);
+    return result.rows.map((row: any) => {
+        return {
+            id: row.id,
+            requester_id: row.requester_id,
+            receiver_id: row.receiver_id,
+            status: row.status,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+            ...row
+        };
+    }) as Connection[];
+}

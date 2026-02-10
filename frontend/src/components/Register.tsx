@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { useNavigate } from 'react-router-dom';
+import apiClient from '../api/client';
 
 export default function Register() {
     const navigate = useNavigate();
@@ -16,8 +17,7 @@ export default function Register() {
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
-    // Backend API URL (assuming proxy or relative path if configured, else hardcoded for now matching default setup)
-    const BACKEND_URL = 'http://localhost:3000/auth/register';
+
 
     const validateForm = () => {
         if (!formData.firstName || !formData.lastName || !formData.email || !formData.password) {
@@ -45,28 +45,15 @@ export default function Register() {
         setIsLoading(true);
 
         try {
-            const response = await fetch(BACKEND_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(formData),
-            });
-
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                throw new Error(data.error || 'Failed to register');
-            }
+            await apiClient.post('/auth/register', formData);
 
             // Success
             navigate('/login');
         } catch (err) {
             console.error('Registration failed', err);
-            if (err instanceof Error) {
-                setError(err.message);
-            } else {
-                setError('Registration failed. Please try again.');
-            }
+            const error = err as { response?: { data?: { error?: string } } };
+            const errorMessage = error.response?.data?.error || 'Registration failed. Please try again.';
+            setError(errorMessage);
         } finally {
             setIsLoading(false);
         }

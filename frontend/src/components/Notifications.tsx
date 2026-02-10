@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { timeAgo } from '../utils/timeAgo';
 import type { Notification } from '../types';
+import apiClient from '../api/client';
 
 interface NotificationsProps {
-    authenticatedFetch: (url: string, options?: RequestInit) => Promise<Response>;
     onNotificationClick: (notification: Notification) => void;
 }
 
-export default function Notifications({ authenticatedFetch, onNotificationClick }: NotificationsProps) {
+export default function Notifications({ onNotificationClick }: NotificationsProps) {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [filter, setFilter] = useState<'all' | 'unread'>('all');
@@ -15,17 +15,14 @@ export default function Notifications({ authenticatedFetch, onNotificationClick 
     const fetchNotifications = useCallback(async () => {
         setIsLoading(true);
         try {
-            const res = await authenticatedFetch('http://localhost:3000/notifications');
-            if (res.ok) {
-                const data = await res.json();
-                setNotifications(data);
-            }
+            const res = await apiClient.get('/notifications');
+            setNotifications(res.data);
         } catch (error) {
             console.error('Failed to fetch notifications', error);
         } finally {
             setIsLoading(false);
         }
-    }, [authenticatedFetch]);
+    }, []);
 
     useEffect(() => {
         fetchNotifications();
@@ -40,9 +37,7 @@ export default function Notifications({ authenticatedFetch, onNotificationClick 
             ));
 
             try {
-                await authenticatedFetch(`http://localhost:3000/notifications/${notification.id}/read`, {
-                    method: 'POST'
-                });
+                await apiClient.post(`/notifications/${notification.id}/read`);
             } catch (error) {
                 console.error('Failed to mark read', error);
             }
@@ -120,11 +115,10 @@ export default function Notifications({ authenticatedFetch, onNotificationClick 
                         <div
                             key={n.id}
                             onClick={() => handleClick(n)}
-                            className={`group flex items-center gap-4 p-4 rounded-xl transition-all cursor-pointer relative ${
-                                !n.read_at
+                            className={`group flex items-center gap-4 p-4 rounded-xl transition-all cursor-pointer relative ${!n.read_at
                                     ? 'bg-primary/5 hover:bg-primary/10 dark:bg-primary/10 dark:hover:bg-primary/20'
                                     : 'bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800'
-                            }`}
+                                }`}
                         >
                             {!n.read_at && (
                                 <div className="absolute left-1 top-1/2 -translate-y-1/2 w-1 h-12 bg-primary rounded-full"></div>

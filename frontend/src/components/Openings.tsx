@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
-import type { Opening, AuthenticatedFetch } from '../types';
+import { useState, useEffect, useCallback } from 'react';
+import type { Opening } from '../types';
 import { Button } from './ui/Button';
+import apiClient from '../api/client';
 
-export default function Openings({ authenticatedFetch }: { authenticatedFetch: AuthenticatedFetch }) {
+export default function Openings() {
   const [openings, setOpenings] = useState<Opening[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
@@ -10,27 +11,25 @@ export default function Openings({ authenticatedFetch }: { authenticatedFetch: A
     experience_level: ''
   });
 
-  useEffect(() => {
-    fetchOpenings();
-  }, [filters]);
-
-  const fetchOpenings = async () => {
+  const fetchOpenings = useCallback(async () => {
     setLoading(true);
     try {
       let url = '/openings?';
       if (filters.job_type) url += `job_type=${filters.job_type}&`;
       if (filters.experience_level) url += `experience_level=${filters.experience_level}&`;
 
-      const res = await authenticatedFetch(url);
-      if (res.ok) {
-        setOpenings(await res.json());
-      }
+      const res = await apiClient.get(url);
+      setOpenings(res.data);
     } catch (err) {
       console.error('Failed to fetch openings', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]);
+
+  useEffect(() => {
+    fetchOpenings();
+  }, [fetchOpenings]);
 
   return (
     <div className="max-w-4xl mx-auto p-4">
@@ -38,9 +37,9 @@ export default function Openings({ authenticatedFetch }: { authenticatedFetch: A
 
       <div className="flex gap-4 mb-6 bg-white p-4 rounded-lg shadow border border-gray-200">
         <select
-          className="border p-2 rounded"
+          className="border p-2 rounded text-black"
           value={filters.job_type}
-          onChange={(e) => setFilters({...filters, job_type: e.target.value})}
+          onChange={(e) => setFilters({ ...filters, job_type: e.target.value })}
         >
           <option value="">All Job Types</option>
           <option value="full-time">Full-time</option>
@@ -50,9 +49,9 @@ export default function Openings({ authenticatedFetch }: { authenticatedFetch: A
         </select>
 
         <select
-          className="border p-2 rounded"
+          className="border p-2 rounded text-black"
           value={filters.experience_level}
-          onChange={(e) => setFilters({...filters, experience_level: e.target.value})}
+          onChange={(e) => setFilters({ ...filters, experience_level: e.target.value })}
         >
           <option value="">All Experience Levels</option>
           <option value="entry">Entry Level</option>

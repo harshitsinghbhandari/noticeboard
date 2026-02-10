@@ -46,7 +46,7 @@ export interface Notification {
     actor_last_name: string;
 }
 
-export type AuthenticatedFetch = (url: string, options?: RequestInit) => Promise<Response>;
+
 
 export interface Club {
     id: string;

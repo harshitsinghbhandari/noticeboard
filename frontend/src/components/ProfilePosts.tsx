@@ -1,31 +1,28 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { Post } from '../types';
+import type { Post, FeedItem } from '../types';
 import { Card, CardContent } from './ui/Card';
 import PostCard from './PostCard';
+import apiClient from '../api/client';
 
 interface ProfilePostsProps {
-    authenticatedFetch: (url: string, options?: RequestInit) => Promise<Response>;
     userId: string;
 }
 
-export default function ProfilePosts({ authenticatedFetch, userId }: ProfilePostsProps) {
+export default function ProfilePosts({ userId }: ProfilePostsProps) {
     const [posts, setPosts] = useState<Post[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     const fetchPosts = useCallback(async () => {
         setIsLoading(true);
         try {
-            const res = await authenticatedFetch(`http://localhost:3000/users/${userId}/posts`);
-            if (res.ok) {
-                const data = await res.json();
-                setPosts(data);
-            }
+            const res = await apiClient.get<Post[]>(`/users/${userId}/posts`);
+            setPosts(res.data);
         } catch (error) {
             console.error('Failed to fetch profile posts', error);
         } finally {
             setIsLoading(false);
         }
-    }, [authenticatedFetch, userId]);
+    }, [userId]);
 
     useEffect(() => {
         if (userId) {
@@ -33,9 +30,12 @@ export default function ProfilePosts({ authenticatedFetch, userId }: ProfilePost
         }
     }, [userId, fetchPosts]);
 
-    const handleLike = async (post: Post) => {
-        const updatedPosts = posts.map(p => {
-            if (p.id === post.id) {
+    const handleLike = async (post: FeedItem | Post) => {
+        const targetPost = post as Post; // We know it's a Post here
+
+        // Optimistic update
+        setPosts(prev => prev.map(p => {
+            if (p.id === targetPost.id) {
                 return {
                     ...p,
                     has_liked: !p.has_liked,
@@ -43,20 +43,22 @@ export default function ProfilePosts({ authenticatedFetch, userId }: ProfilePost
                 };
             }
             return p;
-        });
-        setPosts(updatedPosts);
+        }));
 
         try {
-            const method = post.has_liked ? 'DELETE' : 'POST';
-            await authenticatedFetch(`http://localhost:3000/posts/${post.id}/like`, { method });
+            if (targetPost.has_liked) {
+                await apiClient.delete(`/posts/${targetPost.id}/like`);
+            } else {
+                await apiClient.post(`/posts/${targetPost.id}/like`);
+            }
         } catch (error) {
             console.error('Failed to toggle like', error);
-            fetchPosts();
+            fetchPosts(); // Revert/Refresh on error
         }
     };
 
     const handleCommentAdded = (postId: string) => {
-        setPosts(posts.map(p => p.id === postId ? { ...p, comments_count: Number(p.comments_count) + 1 } : p));
+        setPosts(prev => prev.map(p => p.id === postId ? { ...p, comments_count: Number(p.comments_count) + 1 } : p));
     };
 
 
@@ -76,7 +78,6 @@ export default function ProfilePosts({ authenticatedFetch, userId }: ProfilePost
                     <PostCard
                         key={post.id}
                         post={post}
-                        authenticatedFetch={authenticatedFetch}
                         onLike={handleLike}
                         onCommentAdded={handleCommentAdded}
                     />

@@ -1,15 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import type { UserProfile, Post } from '../types';
 import PostCard from './PostCard';
+import apiClient from '../api/client';
 
 interface ProfileProps {
-    authenticatedFetch: (url: string, options?: RequestInit) => Promise<Response>;
     currentUserId?: string;
 }
 
-export default function Profile({ authenticatedFetch, currentUserId }: ProfileProps) {
+export default function Profile({ currentUserId }: ProfileProps) {
     const { id } = useParams();
+    const navigate = useNavigate();
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [posts, setPosts] = useState<Post[]>([]);
     const [isEditing, setIsEditing] = useState(false);
@@ -24,41 +25,38 @@ export default function Profile({ authenticatedFetch, currentUserId }: ProfilePr
         try {
             // In this app, viewing others is limited, so we mostly handle 'me'
             // But let's try to fetch if we have an ID
-            const endpoint = isMe ? 'http://localhost:3000/me' : `http://localhost:3000/users/${id}`;
-            const res = await authenticatedFetch(endpoint);
-            if (res.ok) {
-                const userData = await res.json();
+            const endpoint = isMe ? '/me' : `/users/${id}`;
+            const res = await apiClient.get(endpoint);
+            const userData = res.data;
 
-                // Get extended profile info
-                const profileRes = await authenticatedFetch('http://localhost:3000/me/profile');
-                if (profileRes.ok) {
-                    const profileData = await profileRes.json();
-                    setProfile({ ...userData, ...profileData });
-                    setAbout(profileData.about || '');
-                } else {
-                    setProfile(userData);
-                }
+            // Get extended profile info
+            try {
+                const profileRes = await apiClient.get('/me/profile');
+                const profileData = profileRes.data;
+                setProfile({ ...userData, ...profileData });
+                setAbout(profileData.about || '');
+            } catch {
+                // Profile might not exist, just use user data
+                setProfile(userData);
             }
+
         } catch (error) {
             console.error('Failed to fetch profile', error);
         }
-    }, [authenticatedFetch, id, isMe]);
+    }, [id, isMe]);
 
     const fetchPosts = useCallback(async () => {
         if (!targetUserId) return;
         setIsLoadingPosts(true);
         try {
-            const res = await authenticatedFetch(`http://localhost:3000/users/${targetUserId}/posts`);
-            if (res.ok) {
-                const data = await res.json();
-                setPosts(data);
-            }
+            const res = await apiClient.get(`/users/${targetUserId}/posts`);
+            setPosts(res.data);
         } catch (error) {
             console.error('Failed to fetch profile posts', error);
         } finally {
             setIsLoadingPosts(false);
         }
-    }, [authenticatedFetch, targetUserId]);
+    }, [targetUserId]);
 
     useEffect(() => {
         fetchProfileData();
@@ -68,14 +66,9 @@ export default function Profile({ authenticatedFetch, currentUserId }: ProfilePr
     const handleSave = async () => {
         setIsSaving(true);
         try {
-            const res = await authenticatedFetch('http://localhost:3000/me/profile', {
-                method: 'PUT',
-                body: JSON.stringify({ about })
-            });
-            if (res.ok) {
-                setProfile(prev => prev ? { ...prev, about } : null);
-                setIsEditing(false);
-            }
+            await apiClient.put('/me/profile', { about });
+            setProfile(prev => prev ? { ...prev, about } : null);
+            setIsEditing(false);
         } catch (error) {
             console.error('Failed to save profile', error);
         } finally {
@@ -83,25 +76,23 @@ export default function Profile({ authenticatedFetch, currentUserId }: ProfilePr
         }
     };
 
-    const handleLike = async (post: Post) => {
-        const updatedPosts = posts.map(p => {
-            if (p.id === post.id) {
+    const handleLikeToggle = (postId: string, currentHasLiked: boolean) => {
+        // Optimistic update
+        setPosts(prev => prev.map(post => {
+            if (post.id === postId) {
                 return {
-                    ...p,
-                    has_liked: !p.has_liked,
-                    likes_count: p.has_liked ? Number(p.likes_count) - 1 : Number(p.likes_count) + 1
+                    ...post,
+                    has_liked: !post.has_liked,
+                    likes_count: post.has_liked ? Number(post.likes_count) - 1 : Number(post.likes_count) + 1
                 };
             }
-            return p;
-        });
-        setPosts(updatedPosts);
+            return post;
+        }));
 
-        try {
-            const method = post.has_liked ? 'DELETE' : 'POST';
-            await authenticatedFetch(`http://localhost:3000/posts/${post.id}/like`, { method });
-        } catch (error) {
-            console.error('Failed to toggle like', error);
-            fetchPosts();
+        if (currentHasLiked) {
+            apiClient.delete(`/posts/${postId}/like`).catch(err => console.error("Failed to unlike", err));
+        } else {
+            apiClient.post(`/posts/${postId}/like`).catch(err => console.error("Failed to like", err));
         }
     };
 
@@ -130,16 +121,25 @@ export default function Profile({ authenticatedFetch, currentUserId }: ProfilePr
                         </div>
                         <div className="flex-1 pb-2">
                             <h1 className="text-2xl md:text-3xl font-bold">{profile.first_name} {profile.last_name}</h1>
-                            <p className="text-[#507395] dark:text-gray-400">{profile.headline || 'Student'}</p>
+                            <p className="text-gray-500 dark:text-gray-400">{profile.headline || 'Student'}</p>
                         </div>
                         <div className="flex gap-2 pb-2">
-                            {isMe && (
+
+                            {isMe ? (
                                 <button
                                     onClick={() => setIsEditing(!isEditing)}
                                     className="bg-primary text-white px-6 py-2 rounded-lg font-semibold hover:bg-primary/90 transition-colors flex items-center gap-2"
                                 >
                                     <span className="material-symbols-outlined text-lg">edit</span>
                                     {isEditing ? 'Cancel' : 'Edit Profile'}
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => navigate(`/messages/${targetUserId}`, { state: { user: profile } })}
+                                    className="bg-primary text-white px-6 py-2 rounded-lg font-semibold hover:bg-primary/90 transition-colors flex items-center gap-2"
+                                >
+                                    <span className="material-symbols-outlined text-lg">mail</span>
+                                    Message
                                 </button>
                             )}
                             <button className="bg-[#e8edf3] dark:bg-gray-800 p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
@@ -165,7 +165,7 @@ export default function Profile({ authenticatedFetch, currentUserId }: ProfilePr
                         </div>
                         <div className="space-y-4">
                             <div className="flex items-start gap-3">
-                                <span className="material-symbols-outlined text-[#507395]">info</span>
+                                <span className="material-symbols-outlined text-gray-500">info</span>
                                 <div className="flex-1">
                                     <p className="text-sm font-semibold">Bio</p>
                                     {isEditing ? (
@@ -185,31 +185,31 @@ export default function Profile({ authenticatedFetch, currentUserId }: ProfilePr
                                             </button>
                                         </div>
                                     ) : (
-                                        <p className="text-sm text-[#507395] dark:text-gray-400">
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">
                                             {profile.about || 'No bio yet.'}
                                         </p>
                                     )}
                                 </div>
                             </div>
                             <div className="flex items-start gap-3">
-                                <span className="material-symbols-outlined text-[#507395]">school</span>
+                                <span className="material-symbols-outlined text-gray-500">school</span>
                                 <div>
                                     <p className="text-sm font-semibold">Major</p>
-                                    <p className="text-sm text-[#507395] dark:text-gray-400">{profile.headline || 'Not specified'}</p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">{profile.headline || 'Not specified'}</p>
                                 </div>
                             </div>
                             <div className="flex items-start gap-3">
-                                <span className="material-symbols-outlined text-[#507395]">calendar_today</span>
+                                <span className="material-symbols-outlined text-gray-500">calendar_today</span>
                                 <div>
                                     <p className="text-sm font-semibold">Class of</p>
-                                    <p className="text-sm text-[#507395] dark:text-gray-400">May 2025</p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">May 2025</p>
                                 </div>
                             </div>
                             <div className="flex items-start gap-3">
-                                <span className="material-symbols-outlined text-[#507395]">groups</span>
+                                <span className="material-symbols-outlined text-gray-500">groups</span>
                                 <div>
                                     <p className="text-sm font-semibold">Clubs</p>
-                                    <p className="text-sm text-[#507395] dark:text-gray-400">Coding Club, Hackathon Team</p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">Coding Club, Hackathon Team</p>
                                 </div>
                             </div>
                         </div>
@@ -242,12 +242,12 @@ export default function Profile({ authenticatedFetch, currentUserId }: ProfilePr
                             <div className="size-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold shrink-0">
                                 {profile.first_name?.[0]}
                             </div>
-                            <button className="flex-1 bg-background-light dark:bg-gray-800 text-[#507395] dark:text-gray-400 text-left px-4 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-sm">
+                            <button className="flex-1 bg-background-light dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-left px-4 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-sm">
                                 What's on your mind, {profile.first_name}?
                             </button>
                             <div className="flex gap-1">
-                                <button className="p-2 text-[#507395] hover:text-primary transition-colors"><span className="material-symbols-outlined">image</span></button>
-                                <button className="p-2 text-[#507395] hover:text-primary transition-colors"><span className="material-symbols-outlined">event</span></button>
+                                <button className="p-2 text-gray-500 hover:text-primary transition-colors"><span className="material-symbols-outlined">image</span></button>
+                                <button className="p-2 text-gray-500 hover:text-primary transition-colors"><span className="material-symbols-outlined">event</span></button>
                             </div>
                         </div>
                     )}
@@ -255,9 +255,9 @@ export default function Profile({ authenticatedFetch, currentUserId }: ProfilePr
                     {/* Posts */}
                     <div className="space-y-4">
                         {isLoadingPosts ? (
-                            <div className="text-center py-10 text-[#507395]">Loading posts...</div>
+                            <div className="text-center py-10 text-gray-500">Loading posts...</div>
                         ) : posts.length === 0 ? (
-                            <div className="bg-white dark:bg-[#1a242f] rounded-xl p-8 border border-[#e8edf3] dark:border-gray-800 text-center text-[#507395]">
+                            <div className="bg-white dark:bg-[#1a242f] rounded-xl p-8 border border-[#e8edf3] dark:border-gray-800 text-center text-gray-500">
                                 No posts yet.
                             </div>
                         ) : (
@@ -265,8 +265,7 @@ export default function Profile({ authenticatedFetch, currentUserId }: ProfilePr
                                 <PostCard
                                     key={post.id}
                                     post={post}
-                                    authenticatedFetch={authenticatedFetch}
-                                    onLike={handleLike}
+                                    onLike={() => handleLikeToggle(post.id, post.has_liked)}
                                     onCommentAdded={handleCommentAdded}
                                 />
                             ))
@@ -285,7 +284,7 @@ export default function Profile({ authenticatedFetch, currentUserId }: ProfilePr
             </div>
 
             {/* Simple Footer */}
-            <footer className="mt-12 py-8 border-t border-[#e8edf3] dark:border-gray-800 text-[#507395] text-sm flex flex-col md:flex-row justify-between items-center gap-4">
+            <footer className="mt-12 py-8 border-t border-[#e8edf3] dark:border-gray-800 text-gray-500 text-sm flex flex-col md:flex-row justify-between items-center gap-4">
                 <p>© 2024 CampusConnect Inc.</p>
                 <div className="flex gap-6">
                     <a className="hover:text-primary" href="#">Privacy Policy</a>

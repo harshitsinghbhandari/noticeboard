@@ -5,7 +5,7 @@ import { pool } from '../infrastructure/db/pool';
 import { authMiddleware } from '../infrastructure/http/auth_middleware';
 import { getUser } from '../infrastructure/db/user_repository';
 import { getProfile, upsertProfile } from '../infrastructure/db/profile_repository';
-import { createRequest, updateStatus, listIncoming, listOutgoing } from '../infrastructure/db/connection_repository';
+import { createRequest, updateStatus, listIncoming, listOutgoing, listConnections } from '../infrastructure/db/connection_repository';
 import { createPost, listPosts, addComment, listComments, addReaction, removeReaction, getPost, listUserPosts, getAggregatedFeed } from '../infrastructure/db/post_repository';
 import { createNotification, listNotifications, markAsRead } from '../infrastructure/db/notification_repository';
 import { getConnection } from '../infrastructure/db/connection_repository';
@@ -15,9 +15,12 @@ import { sendMessage, listConversations, getChat, markMessagesAsRead } from '../
 import { requireRole } from '../infrastructure/http/auth_middleware';
 import { body, validationResult } from 'express-validator';
 
+import { requestLogger } from '../infrastructure/http/logging_middleware';
+
 const app = express();
 const port = parseInt(process.env.PORT || '3000');
 
+app.use(requestLogger);
 app.use(cors());
 app.use(express.json());
 
@@ -203,6 +206,17 @@ app.get('/connections/outgoing', authMiddleware, async (req, res) => {
 });
 
 // Post Routes
+app.get('/connections', authMiddleware, async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+    try {
+        const connections = await listConnections(req.user.id);
+        res.json(connections);
+    } catch (error) {
+        console.error('List connections error', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 app.post('/posts', authMiddleware, async (req, res) => {
     if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
     const { content, visibility, club_id } = req.body;
@@ -261,6 +275,26 @@ app.get('/users/:id/posts', authMiddleware, async (req, res) => {
         res.json(posts);
     } catch (error) {
         console.error('List user posts error', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.get('/users/:id', authMiddleware, async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+    const { id } = req.params;
+
+    if (typeof id !== 'string') {
+        return res.status(400).json({ error: 'Invalid ID' });
+    }
+
+    try {
+        const user = await getUser(id);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.json(user);
+    } catch (error) {
+        console.error('Get user error', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
@@ -453,15 +487,15 @@ app.post('/clubs',
         if (!errors.isEmpty()) {
             return res.status(400).json({ errors: errors.array() });
         }
-    const { name, description, website_url } = req.body;
-    try {
-        const club = await createClub(name, description, req.user!.id, website_url);
-        res.status(201).json(club);
-    } catch (error) {
-        console.error('Create club error', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
+        const { name, description, website_url } = req.body;
+        try {
+            const club = await createClub(name, description, req.user!.id, website_url);
+            res.status(201).json(club);
+        } catch (error) {
+            console.error('Create club error', error);
+            res.status(500).json({ error: 'Internal server error' });
+        }
+    });
 
 app.put('/clubs/:id',
     authMiddleware,
@@ -579,19 +613,19 @@ app.post('/openings',
         if (!errors.isEmpty()) {
             return res.status(400).json({ errors: errors.array() });
         }
-    const { club_id, title, description, location_city, location_country, job_type, experience_level } = req.body;
-    try {
-        const club = await getClub(club_id);
-        if (!club || club.admin_id !== req.user!.id) {
-            return res.status(403).json({ error: 'Forbidden: You are not authorized to create openings for this club' });
+        const { club_id, title, description, location_city, location_country, job_type, experience_level } = req.body;
+        try {
+            const club = await getClub(club_id);
+            if (!club || club.admin_id !== req.user!.id) {
+                return res.status(403).json({ error: 'Forbidden: You are not authorized to create openings for this club' });
+            }
+            const opening = await createOpening({ club_id, title, description, location_city, location_country, job_type, experience_level });
+            res.status(201).json(opening);
+        } catch (error) {
+            console.error('Create opening error', error);
+            res.status(500).json({ error: 'Internal server error' });
         }
-        const opening = await createOpening({ club_id, title, description, location_city, location_country, job_type, experience_level });
-        res.status(201).json(opening);
-    } catch (error) {
-        console.error('Create opening error', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
+    });
 
 app.put('/openings/:id',
     authMiddleware,

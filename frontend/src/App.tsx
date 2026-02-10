@@ -1,6 +1,6 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Keycloak from 'keycloak-js';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
 import Feed from './components/Feed';
 import Notifications from './components/Notifications';
 import Layout from './components/Layout';
@@ -14,7 +14,7 @@ import Profile from './components/Profile';
 import SinglePost from './components/SinglePost';
 import Login from './components/Login';
 import Register from './components/Register';
-import type { Notification, AuthenticatedFetch } from './types';
+import type { Notification } from './types';
 
 // ⚠️ CHANGE ME: Update these values to match your Keycloak setup
 const KEYCLOAK_CONFIG = {
@@ -26,18 +26,10 @@ const KEYCLOAK_CONFIG = {
 // Initialize Keycloak instance
 const keycloak = new Keycloak(KEYCLOAK_CONFIG);
 
-
-
 function AppContent() {
   const isRun = useRef(false);
   const [authenticated, setAuthenticated] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
-
-  // Need to use useNavigate inside Router context, so creating a wrapper or moving logic
-  // But AppContent is inside BrowserRouter in App
-
-  // Note: keycloak initialization should ideally happen once. 
-  // If we move it inside a component that re-renders, use refs or outside effect.
 
   useEffect(() => {
     if (isRun.current) return;
@@ -51,41 +43,28 @@ function AppContent() {
         onLoad: 'check-sso',
         token: storedToken,
         refreshToken: storedRefreshToken,
-        pkceMethod: 'S256',
-        checkLoginIframe: false, // Sometimes causes issues in local dev
+        pkceMethod: 'S256', // PKCE is good
+        checkLoginIframe: false,
       })
       .then((auth) => {
         setAuthenticated(auth);
+        if (auth && keycloak.token) {
+          localStorage.setItem('token', keycloak.token);
+          if (keycloak.refreshToken) {
+            localStorage.setItem('refreshToken', keycloak.refreshToken);
+          }
+        }
+
       })
-      .catch((err) => {
-        console.error('Keycloak init error:', err);
-      })
+      .catch(console.error)
       .finally(() => {
         setIsInitialized(true);
       });
   }, []);
 
-  const authenticatedFetch: AuthenticatedFetch = useCallback(async (url: string, options: RequestInit = {}) => {
-    // Prefer keycloak.token if available (it might be fresher due to silent refresh),
-    // but fallback to localStorage immediately.
-    let token = keycloak.token || localStorage.getItem('token');
-
-    return fetch(url, {
-      ...options,
-      headers: {
-        ...options.headers,
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-  }, []);
-
   const handleLoginSuccess = (token: string, refreshToken?: string) => {
     localStorage.setItem('token', token);
     if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
-    // Force reload to re-init keycloak with new token or just navigate
-    // Simple state update might not be enough for keycloak-js to adopt the token without init, 
-    // but we can try to navigate first. For robust auth, reload is safer.
     window.location.href = '/feed';
   };
 
@@ -95,13 +74,10 @@ function AppContent() {
     keycloak.logout();
   };
 
-
-
   if (!isInitialized) {
     return <div className="flex h-screen items-center justify-center">Loading...</div>;
   }
 
-  // Strict reliance on Keycloak state
   const parsedToken = keycloak.tokenParsed;
 
   return (
@@ -121,15 +97,16 @@ function AppContent() {
           >
             <Routes>
               <Route path="/" element={<Navigate to="/feed" replace />} />
-              <Route path="/feed" element={<Feed authenticatedFetch={authenticatedFetch} />} />
-              <Route path="/connections" element={<Connections authenticatedFetch={authenticatedFetch} />} />
-              <Route path="/clubs" element={<Clubs authenticatedFetch={authenticatedFetch} />} />
-              <Route path="/clubs/:id" element={<ClubProfile authenticatedFetch={authenticatedFetch} currentUserId={parsedToken?.sub} />} />
-              <Route path="/openings" element={<Openings authenticatedFetch={authenticatedFetch} />} />
-              <Route path="/messages" element={<Messages authenticatedFetch={authenticatedFetch} />} />
-              <Route path="/notifications" element={<NotificationsWithNavigation authenticatedFetch={authenticatedFetch} />} />
-              <Route path="/profile/:id" element={<Profile authenticatedFetch={authenticatedFetch} currentUserId={parsedToken?.sub} />} />
-              <Route path="/posts/:id" element={<SinglePostWrapper authenticatedFetch={authenticatedFetch} />} />
+              <Route path="/feed" element={<Feed />} />
+              <Route path="/connections" element={<Connections currentUserId={parsedToken?.sub} />} />
+              <Route path="/clubs" element={<Clubs userRoles={parsedToken?.realm_access?.roles || []} />} />
+              <Route path="/clubs/:id" element={<ClubProfile currentUserId={parsedToken?.sub} userRoles={parsedToken?.realm_access?.roles || []} />} />
+              <Route path="/openings" element={<Openings />} />
+              <Route path="/messages" element={<Messages />} />
+              <Route path="/messages/:userId" element={<Messages />} />
+              <Route path="/notifications" element={<NotificationsWithNavigation />} />
+              <Route path="/profile/:id" element={<Profile currentUserId={parsedToken?.sub} />} />
+              <Route path="/posts/:id" element={<SinglePostWrapper />} />
             </Routes>
           </Layout>
         )
@@ -139,7 +116,7 @@ function AppContent() {
 }
 
 // Wrapper to handle navigation from Notifications
-function NotificationsWithNavigation({ authenticatedFetch }: { authenticatedFetch: AuthenticatedFetch }) {
+function NotificationsWithNavigation() {
   const navigate = useNavigate();
   const handleNotificationClick = (notification: Notification) => {
     if ((notification.type === 'like' || notification.type === 'comment') && notification.post_id) {
@@ -147,13 +124,11 @@ function NotificationsWithNavigation({ authenticatedFetch }: { authenticatedFetc
     }
   };
 
-  return <Notifications authenticatedFetch={authenticatedFetch} onNotificationClick={handleNotificationClick} />;
+  return <Notifications onNotificationClick={handleNotificationClick} />;
 }
 
 // Wrapper for SinglePost to extract ID from params
-import { useParams } from 'react-router-dom';
-
-function SinglePostWrapper({ authenticatedFetch }: { authenticatedFetch: AuthenticatedFetch }) {
+function SinglePostWrapper() {
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -162,7 +137,6 @@ function SinglePostWrapper({ authenticatedFetch }: { authenticatedFetch: Authent
   return (
     <SinglePost
       postId={id}
-      authenticatedFetch={authenticatedFetch}
       onBack={() => navigate('/feed')}
     />
   );

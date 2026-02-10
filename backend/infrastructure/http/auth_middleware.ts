@@ -4,7 +4,7 @@ import jwksRsa from 'jwks-rsa';
 import { upsertUser, EmailConflictError } from '../db/user_repository';
 
 if (!process.env.KEYCLOAK_JWKS_URI) {
-  throw new Error('KEYCLOAK_JWKS_URI not set');
+    throw new Error('KEYCLOAK_JWKS_URI not set');
 }
 
 
@@ -99,6 +99,8 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
                 last_name: payload.family_name,
                 roles,
             };
+
+
 
             try {
                 await upsertUser(user);

@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { timeAgo } from '../utils/timeAgo';
+import apiClient from '../api/client';
 
 interface Connection {
     id: string;
@@ -15,13 +17,16 @@ interface Connection {
     receiver_headline?: string;
 }
 
+
 interface ConnectionsProps {
-    authenticatedFetch: (url: string, options?: RequestInit) => Promise<Response>;
+    currentUserId?: string;
 }
 
-export default function Connections({ authenticatedFetch }: ConnectionsProps) {
+export default function Connections({ currentUserId }: ConnectionsProps) {
+    const navigate = useNavigate();
     const [incoming, setIncoming] = useState<Connection[]>([]);
     const [outgoing, setOutgoing] = useState<Connection[]>([]);
+    const [myConnections, setMyConnections] = useState<Connection[]>([]);
     const [targetUserId, setTargetUserId] = useState('');
     const [connectStatus, setConnectStatus] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -29,18 +34,20 @@ export default function Connections({ authenticatedFetch }: ConnectionsProps) {
     const fetchConnections = useCallback(async () => {
         setIsLoading(true);
         try {
-            const [incRes, outRes] = await Promise.all([
-                authenticatedFetch('http://localhost:3000/connections/incoming'),
-                authenticatedFetch('http://localhost:3000/connections/outgoing')
+            const [incRes, outRes, myRes] = await Promise.all([
+                apiClient.get('/connections/incoming'),
+                apiClient.get('/connections/outgoing'),
+                apiClient.get('/connections')
             ]);
-            if (incRes.ok) setIncoming(await incRes.json());
-            if (outRes.ok) setOutgoing(await outRes.json());
+            setIncoming(incRes.data);
+            setOutgoing(outRes.data);
+            setMyConnections(myRes.data);
         } catch (e) {
             console.error(e);
         } finally {
             setIsLoading(false);
         }
-    }, [authenticatedFetch]);
+    }, []);
 
     useEffect(() => {
         fetchConnections();
@@ -51,30 +58,21 @@ export default function Connections({ authenticatedFetch }: ConnectionsProps) {
         if (!targetUserId.trim()) return;
 
         try {
-            const res = await authenticatedFetch('http://localhost:3000/connections/request', {
-                method: 'POST',
-                body: JSON.stringify({ receiver_id: targetUserId })
-            });
-
-            if (res.ok) {
-                setConnectStatus('Request sent!');
-                setTargetUserId('');
-                fetchConnections();
-            } else {
-                const err = await res.json();
-                setConnectStatus(`Error: ${err.error}`);
-            }
+            await apiClient.post('/connections/request', { receiver_id: targetUserId });
+            setConnectStatus('Request sent!');
+            setTargetUserId('');
+            fetchConnections();
         } catch (error) {
-            console.error(error);
-            setConnectStatus('Failed to send request');
+            const err = error as { response?: { data?: { error?: string } } };
+            console.error(err);
+            const errormsg = err.response?.data?.error || 'Failed to send request';
+            setConnectStatus(`Error: ${errormsg}`);
         }
     };
 
     const respondToRequest = async (id: string, action: 'accept' | 'reject') => {
         try {
-            await authenticatedFetch(`http://localhost:3000/connections/${id}/${action}`, {
-                method: 'POST'
-            });
+            await apiClient.post(`/connections/${id}/${action}`);
             fetchConnections();
         } catch (e) { console.error(e); }
     };
@@ -194,13 +192,12 @@ export default function Connections({ authenticatedFetch }: ConnectionsProps) {
                                                     </p>
                                                 </div>
                                             </div>
-                                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
-                                                conn.status === 'accepted'
-                                                    ? 'text-green-600 bg-green-50 dark:bg-green-900/30'
-                                                    : conn.status === 'rejected'
-                                                        ? 'text-red-600 bg-red-50 dark:bg-red-900/30'
-                                                        : 'text-amber-600 bg-amber-50 dark:bg-amber-900/30'
-                                            }`}>
+                                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${conn.status === 'accepted'
+                                                ? 'text-green-600 bg-green-50 dark:bg-green-900/30'
+                                                : conn.status === 'rejected'
+                                                    ? 'text-red-600 bg-red-50 dark:bg-red-900/30'
+                                                    : 'text-amber-600 bg-amber-50 dark:bg-amber-900/30'
+                                                }`}>
                                                 {conn.status}
                                             </span>
                                         </div>
@@ -220,23 +217,47 @@ export default function Connections({ authenticatedFetch }: ConnectionsProps) {
                         </div>
                     </section>
 
-                    {/* Network Stats Card */}
-                    <div className="bg-gradient-to-br from-primary/10 to-transparent p-6 rounded-xl border border-primary/20 bg-white dark:bg-slate-900 shadow-sm">
-                        <h3 className="font-bold text-slate-900 dark:text-white mb-4">Network Insights</h3>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-white/80 dark:bg-slate-800/80 p-3 rounded-lg text-center backdrop-blur-sm border border-slate-100 dark:border-slate-700">
-                                <span className="block text-xl font-bold text-primary">124</span>
-                                <span className="text-[10px] text-slate-500 uppercase font-semibold">Total Connections</span>
-                            </div>
-                            <div className="bg-white/80 dark:bg-slate-800/80 p-3 rounded-lg text-center backdrop-blur-sm border border-slate-100 dark:border-slate-700">
-                                <span className="block text-xl font-bold text-primary">12</span>
-                                <span className="text-[10px] text-slate-500 uppercase font-semibold">Profile Views</span>
-                            </div>
+                    {/* My Connections Section */}
+                    <div className="bg-white dark:bg-slate-900 Rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6">
+                        <h3 className="font-bold text-slate-900 dark:text-white mb-4">My Connections</h3>
+                        <div className="space-y-4">
+                            {myConnections.length === 0 ? (
+                                <p className="text-center text-slate-400 text-sm py-4">You haven't connected with anyone yet.</p>
+                            ) : (
+                                myConnections.map((conn) => {
+                                    const isRequester = conn.requester_id === currentUserId;
+                                    const firstName = isRequester ? conn.receiver_first_name : conn.requester_first_name;
+                                    const lastName = isRequester ? conn.receiver_last_name : conn.requester_last_name;
+                                    const headline = isRequester ? conn.receiver_headline : conn.requester_headline;
+
+                                    return (
+                                        <div key={conn.id} className="flex items-center justify-between group">
+                                            <div className="flex items-center gap-3">
+                                                <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold overflow-hidden">
+                                                    {firstName?.[0]}
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                                        {firstName} {lastName}
+                                                    </h4>
+                                                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                                        {headline || 'Student'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    const otherUserId = conn.requester_id === currentUserId ? conn.receiver_id : conn.requester_id;
+                                                    navigate(`/messages/${otherUserId}`);
+                                                }}
+                                                className="text-xs text-slate-400 hover:text-primary transition-colors opacity-0 group-hover:opacity-100">
+                                                Message
+                                            </button>
+                                        </div>
+                                    );
+                                })
+                            )}
                         </div>
-                        <button className="w-full mt-4 flex items-center justify-center gap-2 py-2.5 bg-white dark:bg-slate-800 text-primary text-sm font-bold rounded-lg border border-primary/20 hover:bg-primary/5 transition-all shadow-sm">
-                            <span className="material-symbols-outlined text-sm">rocket_launch</span>
-                            Expand Network
-                        </button>
                     </div>
                 </div>
             </div>

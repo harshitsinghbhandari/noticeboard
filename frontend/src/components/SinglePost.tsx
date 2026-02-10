@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Post } from '../types';
 import PostCard from './PostCard';
+import apiClient from '../api/client';
 
 interface SinglePostProps {
     postId: string;
-    authenticatedFetch: (url: string, options?: RequestInit) => Promise<Response>;
     onBack?: () => void;
 }
 
-export default function SinglePost({ postId, authenticatedFetch, onBack }: SinglePostProps) {
+export default function SinglePost({ postId, onBack }: SinglePostProps) {
     const [post, setPost] = useState<Post | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -17,42 +17,31 @@ export default function SinglePost({ postId, authenticatedFetch, onBack }: Singl
         setIsLoading(true);
         setError(null);
         try {
-            // We need a route to fetch single post.
-            // Check backend server.ts. There is NO `GET /posts/:id` route!
-            // I need to add that route to backend first.
-            const res = await authenticatedFetch(`http://localhost:3000/posts/${postId}`);
-            if (res.ok) {
-                const data = await res.json();
-                setPost(data);
-            } else {
-                setError('Post not found');
-            }
+            const res = await apiClient.get(`/posts/${postId}`);
+            setPost(res.data);
         } catch (error) {
             console.error('Failed to fetch post', error);
             setError('Failed to load post');
         } finally {
             setIsLoading(false);
         }
-    }, [authenticatedFetch, postId]);
+    }, [postId]);
 
     useEffect(() => {
         fetchPost();
     }, [postId, fetchPost]);
 
-    const handleLike = async (post: Post) => {
-        if (!post) return;
+    const handleLikeToggle = (currentPost: Post) => {
         setPost({
-            ...post,
-            has_liked: !post.has_liked,
-            likes_count: post.has_liked ? Number(post.likes_count) - 1 : Number(post.likes_count) + 1
+            ...currentPost,
+            has_liked: !currentPost.has_liked,
+            likes_count: currentPost.has_liked ? Number(currentPost.likes_count) - 1 : Number(currentPost.likes_count) + 1
         });
 
-        try {
-            const method = post.has_liked ? 'DELETE' : 'POST';
-            await authenticatedFetch(`http://localhost:3000/posts/${post.id}/like`, { method });
-        } catch (error) {
-            console.error('Failed to toggle like', error);
-            fetchPost();
+        if (currentPost.has_liked) {
+            apiClient.delete(`/posts/${currentPost.id}/like`).catch(err => console.error("Failed to unlike", err));
+        } else {
+            apiClient.post(`/posts/${currentPost.id}/like`).catch(err => console.error("Failed to like", err));
         }
     };
 
@@ -78,8 +67,7 @@ export default function SinglePost({ postId, authenticatedFetch, onBack }: Singl
             )}
             <PostCard
                 post={post}
-                authenticatedFetch={authenticatedFetch}
-                onLike={handleLike}
+                onLike={() => handleLikeToggle(post)}
                 onCommentAdded={handleCommentAdded}
             />
         </div>

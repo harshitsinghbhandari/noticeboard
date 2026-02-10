@@ -1,15 +1,15 @@
 import { useState } from 'react';
 import type { Comment, FeedItem, Post } from '../types';
 import { timeAgo } from '../utils/timeAgo';
+import apiClient from '../api/client';
 
 interface PostCardProps {
     post: FeedItem | Post;
-    authenticatedFetch: (url: string, options?: RequestInit) => Promise<Response>;
-    onLike: (post: any) => void;
+    onLike: (post: FeedItem | Post) => void;
     onCommentAdded: (postId: string) => void;
 }
 
-export default function PostCard({ post, authenticatedFetch, onLike, onCommentAdded }: PostCardProps) {
+export default function PostCard({ post, onLike, onCommentAdded }: PostCardProps) {
     const [comments, setComments] = useState<Comment[]>([]);
     const [isExpanded, setIsExpanded] = useState(false);
     const [newComment, setNewComment] = useState('');
@@ -29,12 +29,9 @@ export default function PostCard({ post, authenticatedFetch, onLike, onCommentAd
 
     const fetchComments = async () => {
         try {
-            const res = await authenticatedFetch(`http://localhost:3000/posts/${post.id}/comments`);
-            if (res.ok) {
-                const data = await res.json();
-                setComments(data);
-                setAreCommentsLoaded(true);
-            }
+            const res = await apiClient.get(`/posts/${post.id}/comments`);
+            setComments(res.data);
+            setAreCommentsLoaded(true);
         } catch (error) {
             console.error('Failed to fetch comments', error);
         }
@@ -44,15 +41,10 @@ export default function PostCard({ post, authenticatedFetch, onLike, onCommentAd
         if (!newComment.trim()) return;
         setIsCommenting(true);
         try {
-            const res = await authenticatedFetch(`http://localhost:3000/posts/${post.id}/comments`, {
-                method: 'POST',
-                body: JSON.stringify({ content: newComment }),
-            });
-            if (res.ok) {
-                setNewComment('');
-                fetchComments();
-                onCommentAdded(post.id);
-            }
+            await apiClient.post(`/posts/${post.id}/comments`, { content: newComment });
+            setNewComment('');
+            fetchComments();
+            onCommentAdded(post.id);
         } catch (error) {
             console.error('Failed to add comment', error);
         } finally {
@@ -69,22 +61,22 @@ export default function PostCard({ post, authenticatedFetch, onLike, onCommentAd
                             <span className="material-symbols-outlined">work</span>
                         </div>
                         <div>
-                            <h3 className="text-sm font-bold text-[#0e141b] dark:text-white leading-tight">
+                            <h3 className="text-sm font-bold text-gray-900 dark:text-white leading-tight">
                                 Opportunity: {post.title}
                             </h3>
-                            <div className="flex items-center gap-1.5 text-xs text-[#507395] dark:text-gray-400">
+                            <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
                                 <span className="text-primary font-semibold">{post.club_name}</span>
                                 <span>•</span>
                                 <span>{timeAgo(post.created_at)}</span>
                             </div>
                         </div>
                     </div>
-                    <div className="text-[#0e141b] dark:text-gray-200 text-sm leading-relaxed mb-4 whitespace-pre-wrap">
+                    <div className="text-gray-900 dark:text-gray-200 text-sm leading-relaxed mb-4 whitespace-pre-wrap">
                         <p>{post.content}</p>
                         <div className="mt-3 flex flex-wrap gap-2">
-                             <span className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-xs">📍 {post.location_city}, {post.location_country}</span>
-                             <span className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-xs">💼 {post.job_type}</span>
-                             <span className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-xs">🎓 {post.experience_level}</span>
+                            <span className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-xs">📍 {post.location_city}, {post.location_country}</span>
+                            <span className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-xs">💼 {post.job_type}</span>
+                            <span className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-xs">🎓 {post.experience_level}</span>
                         </div>
                     </div>
                     <button className="w-full py-2 bg-primary text-white rounded-lg font-bold text-sm">Apply Now</button>
@@ -102,22 +94,22 @@ export default function PostCard({ post, authenticatedFetch, onLike, onCommentAd
                         {post.author_first_name?.[0] || post.club_name?.[0]}
                     </div>
                     <div>
-                        <h3 className="text-sm font-bold text-[#0e141b] dark:text-white leading-tight">
+                        <h3 className="text-sm font-bold text-gray-900 dark:text-white leading-tight">
                             {post.club_name ? post.club_name : `${post.author_first_name} ${post.author_last_name}`}
                         </h3>
-                        <div className="flex items-center gap-1.5 text-xs text-[#507395] dark:text-gray-400">
+                        <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
                             <span>{post.author_headline || 'Student'}</span>
                             <span>•</span>
                             <span>{timeAgo(post.created_at)}</span>
                         </div>
                     </div>
-                    <button className="ml-auto text-[#507395] dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 p-1 rounded">
+                    <button className="ml-auto text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 p-1 rounded">
                         <span className="material-symbols-outlined">more_horiz</span>
                     </button>
                 </div>
 
                 {/* Post Body */}
-                <div className="text-[#0e141b] dark:text-gray-200 text-sm leading-relaxed mb-4 whitespace-pre-wrap">
+                <div className="text-gray-900 dark:text-gray-200 text-sm leading-relaxed mb-4 whitespace-pre-wrap">
                     <p>{post.content}</p>
                 </div>
 
@@ -130,11 +122,11 @@ export default function PostCard({ post, authenticatedFetch, onLike, onCommentAd
                                     <span className="material-symbols-outlined text-[12px] text-white filled-icon">thumb_up</span>
                                 </div>
                             </div>
-                            <span className="text-xs font-medium text-[#507395] dark:text-gray-400">
+                            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
                                 {post.likes_count} likes
                             </span>
                         </div>
-                        <span className="text-xs font-medium text-[#507395] dark:text-gray-400">
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
                             {post.comments_count} comments
                         </span>
                     </div>
@@ -144,11 +136,10 @@ export default function PostCard({ post, authenticatedFetch, onLike, onCommentAd
                 <div className="flex items-center gap-2">
                     <button
                         onClick={() => onLike(post)}
-                        className={`flex-1 py-2 flex items-center justify-center gap-2 rounded-lg font-semibold text-sm transition-colors ${
-                            post.has_liked
-                                ? 'text-primary bg-primary/5 hover:bg-primary/10'
-                                : 'text-[#507395] dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
-                        }`}
+                        className={`flex-1 py-2 flex items-center justify-center gap-2 rounded-lg font-semibold text-sm transition-colors ${post.has_liked
+                            ? 'text-primary bg-primary/5 hover:bg-primary/10'
+                            : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                            }`}
                     >
                         <span className={`material-symbols-outlined text-xl ${post.has_liked ? 'filled-icon' : ''}`}>
                             thumb_up
@@ -157,9 +148,8 @@ export default function PostCard({ post, authenticatedFetch, onLike, onCommentAd
                     </button>
                     <button
                         onClick={toggleComments}
-                        className={`flex-1 py-2 flex items-center justify-center gap-2 text-[#507395] dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg font-semibold text-sm transition-colors ${
-                            isExpanded ? 'bg-gray-100 dark:bg-gray-800' : ''
-                        }`}
+                        className={`flex-1 py-2 flex items-center justify-center gap-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg font-semibold text-sm transition-colors ${isExpanded ? 'bg-gray-100 dark:bg-gray-800' : ''
+                            }`}
                     >
                         <span className="material-symbols-outlined text-xl">chat_bubble</span>
                         <span>Comment</span>
