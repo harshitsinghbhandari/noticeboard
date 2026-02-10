@@ -5,11 +5,11 @@ import * as clubRepo from '../../infrastructure/db/club_repository';
 
 // Mock auth middleware to bypass real Keycloak
 vi.mock('../../infrastructure/http/auth_middleware', () => ({
-    authMiddleware: vi.fn((req, res, next) => {
+    authMiddleware: vi.fn((req: any, res: any, next: any) => {
         req.user = { id: 'u1', email: 'test@example.com', first_name: 'Test', last_name: 'User', roles: ['USER'] };
         next();
     }),
-    requireRole: vi.fn((role) => (req, res, next) => {
+    requireRole: vi.fn((role: string) => (req: any, res: any, next: any) => {
         if (req.user && req.user.roles.includes(role)) next();
         else res.status(403).json({ error: 'Forbidden' });
     })

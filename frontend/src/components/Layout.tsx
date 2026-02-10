@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useDarkMode } from './DarkModeContext';
 
 interface LayoutProps {
     children: ReactNode;
@@ -9,6 +11,8 @@ interface LayoutProps {
 }
 
 export default function Layout({ children, userEmail, currentUserId, onLogout }: LayoutProps) {
+    const { isDarkMode, toggleDarkMode } = useDarkMode();
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
     const location = useLocation();
     const activeTab = location.pathname.split('/')[1] || 'feed';
 
@@ -17,7 +21,17 @@ export default function Layout({ children, userEmail, currentUserId, onLogout }:
             {/* Top Navigation Bar */}
             <header className="sticky top-0 z-50 w-full bg-white dark:bg-[#1a242f] border-b border-[#e8edf3] dark:border-gray-800 px-4 md:px-10 py-3">
                 <div className="max-w-[1200px] mx-auto flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-8">
+                    <div className="flex items-center gap-4 md:gap-8">
+                        {/* Mobile Menu Toggle */}
+                        <button
+                            onClick={() => setIsMenuOpen(!isMenuOpen)}
+                            className="md:hidden p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                        >
+                            <span className="material-symbols-outlined">
+                                {isMenuOpen ? 'close' : 'menu'}
+                            </span>
+                        </button>
+
                         {/* Logo */}
                         <Link to="/feed" className="flex items-center gap-2.5">
                             <div className="bg-primary text-white p-1.5 rounded-lg flex items-center justify-center">
@@ -88,10 +102,21 @@ export default function Layout({ children, userEmail, currentUserId, onLogout }:
                         </nav>
 
                         <div className="flex items-center gap-2">
+                            {/* Dark Mode Toggle */}
+                            <button
+                                onClick={toggleDarkMode}
+                                className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                                title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                            >
+                                <span className="material-symbols-outlined">
+                                    {isDarkMode ? 'light_mode' : 'dark_mode'}
+                                </span>
+                            </button>
+
                             {/* Logout */}
                             <button
                                 onClick={onLogout}
-                                className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                                className="hidden md:flex p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                                 title="Logout"
                             >
                                 <span className="material-symbols-outlined">logout</span>
@@ -100,7 +125,7 @@ export default function Layout({ children, userEmail, currentUserId, onLogout }:
                             {/* Profile Menu */}
                             <Link
                                 to={`/profile/${currentUserId || 'me'}`}
-                                className="flex items-center gap-2 pl-2 border-l border-gray-200 dark:border-gray-700 ml-2"
+                                className="hidden md:flex items-center gap-2 pl-2 border-l border-gray-200 dark:border-gray-700 ml-2"
                             >
                                 <div className="h-8 w-8 rounded-full bg-primary/20 border border-primary/30 overflow-hidden">
                                     <div className="h-full w-full flex items-center justify-center text-primary font-bold text-xs">
@@ -113,6 +138,73 @@ export default function Layout({ children, userEmail, currentUserId, onLogout }:
                     </div>
                 </div>
             </header>
+
+            {/* Mobile Menu Overlay */}
+            {isMenuOpen && (
+                <div
+                    className="fixed inset-0 z-40 bg-black/50 md:hidden backdrop-blur-sm transition-opacity"
+                    onClick={() => setIsMenuOpen(false)}
+                />
+            )}
+
+            {/* Mobile Menu Sidebar */}
+            <div className={`fixed top-0 left-0 bottom-0 z-50 w-64 bg-white dark:bg-[#1a242f] border-r border-[#e8edf3] dark:border-gray-800 transform transition-transform duration-300 ease-in-out md:hidden ${isMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                <div className="p-4 flex flex-col h-full">
+                    <div className="flex items-center gap-2.5 mb-8 pt-2">
+                        <div className="bg-primary text-white p-1.5 rounded-lg flex items-center justify-center">
+                            <span className="material-symbols-outlined text-2xl">school</span>
+                        </div>
+                        <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">CampusConnect</h1>
+                    </div>
+
+                    <nav className="flex flex-col gap-2">
+                        {[
+                            { to: '/feed', label: 'Feed', icon: 'home', tab: 'feed' },
+                            { to: '/connections', label: 'Connections', icon: 'group', tab: 'connections' },
+                            { to: '/clubs', label: 'Clubs', icon: 'groups', tab: 'clubs' },
+                            { to: '/openings', label: 'Openings', icon: 'work', tab: 'openings' },
+                            { to: '/messages', label: 'Messages', icon: 'mail', tab: 'messages' },
+                            { to: '/notifications', label: 'Notifications', icon: 'notifications', tab: 'notifications' },
+                        ].map((link) => (
+                            <Link
+                                key={link.to}
+                                to={link.to}
+                                onClick={() => setIsMenuOpen(false)}
+                                className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === link.tab
+                                        ? 'bg-primary/10 text-primary'
+                                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                                    }`}
+                            >
+                                <span className="material-symbols-outlined">{link.icon}</span>
+                                {link.label}
+                            </Link>
+                        ))}
+                    </nav>
+
+                    <div className="mt-auto pt-4 border-t border-[#e8edf3] dark:border-gray-800">
+                        <Link
+                            to={`/profile/${currentUserId || 'me'}`}
+                            onClick={() => setIsMenuOpen(false)}
+                            className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                        >
+                            <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs">
+                                {userEmail?.[0].toUpperCase() || 'U'}
+                            </div>
+                            My Profile
+                        </Link>
+                        <button
+                            onClick={() => {
+                                setIsMenuOpen(false);
+                                onLogout();
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors mt-2"
+                        >
+                            <span className="material-symbols-outlined">logout</span>
+                            Logout
+                        </button>
+                    </div>
+                </div>
+            </div>
 
             {/* Main Content Area */}
             <main className="max-w-[1200px] mx-auto px-4 py-8">

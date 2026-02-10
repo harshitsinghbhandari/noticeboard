@@ -15,6 +15,7 @@ import SinglePost from './components/SinglePost';
 import Login from './components/Login';
 import Register from './components/Register';
 import type { Notification } from './types';
+import { DarkModeProvider } from './components/DarkModeContext';
 
 // ⚠️ CHANGE ME: Update these values to match your Keycloak setup
 const KEYCLOAK_CONFIG = {
@@ -144,8 +145,10 @@ function SinglePostWrapper() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AppContent />
-    </BrowserRouter>
+    <DarkModeProvider>
+      <BrowserRouter>
+        <AppContent />
+      </BrowserRouter>
+    </DarkModeProvider>
   );
 }

@@ -6,12 +6,12 @@ import * as openingRepo from '../../infrastructure/db/opening_repository';
 
 // Mock auth middleware
 vi.mock('../../infrastructure/http/auth_middleware', () => ({
-    authMiddleware: vi.fn((req, res, next) => {
+    authMiddleware: vi.fn((req: any, res: any, next: any) => {
         // Default to a regular user
         req.user = { id: 'user-1', email: 'u1@example.com', first_name: 'U1', last_name: 'Last', roles: ['USER'] };
         next();
     }),
-    requireRole: vi.fn((role) => (req, res, next) => {
+    requireRole: vi.fn((role: string) => (req: any, res: any, next: any) => {
         if (req.user && req.user.roles.includes(role)) next();
         else res.status(403).json({ error: 'Forbidden' });
     })
@@ -35,7 +35,7 @@ describe('Club Audit - Security & Functionality', () => {
         (clubRepo.getClub as any).mockResolvedValue(mockClub);
 
         // Simulate a DIFFERENT CLUB_ADMIN
-        (authMiddleware as any).mockImplementationOnce((req, res, next) => {
+        (authMiddleware as any).mockImplementationOnce((req: any, res: any, next: any) => {
             req.user = { id: 'user-admin-2', email: 'u2@example.com', roles: ['CLUB_ADMIN'] };
             next();
         });
@@ -51,7 +51,7 @@ describe('Club Audit - Security & Functionality', () => {
         (clubRepo.getClub as any).mockResolvedValue(mockClub);
 
         // Simulate a CLUB_CONVENER who is NOT the admin
-        (authMiddleware as any).mockImplementationOnce((req, res, next) => {
+        (authMiddleware as any).mockImplementationOnce((req: any, res: any, next: any) => {
             req.user = { id: 'convener-1', email: 'c1@example.com', roles: ['CLUB_CONVENER'] };
             next();
         });
@@ -66,7 +66,7 @@ describe('Club Audit - Security & Functionality', () => {
     });
 
     it('FIXED: Club creation now records creator', async () => {
-        (authMiddleware as any).mockImplementationOnce((req, res, next) => {
+        (authMiddleware as any).mockImplementationOnce((req: any, res: any, next: any) => {
             req.user = { id: 'creator-1', email: 'c1@example.com', roles: ['CLUB_ADMIN'] };
             next();
         });
