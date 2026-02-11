@@ -198,7 +198,7 @@ export default function Messages() {
               <input
                 type="text"
                 placeholder="Type a message..."
-                className="flex-1 border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
               />
