@@ -18,7 +18,7 @@ describe('opening_repository', () => {
         (pool.query as any).mockResolvedValue({ rows: [mockOpening] });
 
         const opening = await createOpening({
-            club_id: 'c1',
+            body_id: 'c1',
             title: 'Intern',
             description: 'Desc',
             location_city: 'Mumbai',

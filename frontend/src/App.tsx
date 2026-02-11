@@ -5,8 +5,8 @@ import Feed from './components/Feed';
 import Notifications from './components/Notifications';
 import Layout from './components/Layout';
 import Connections from './components/Connections';
-import Clubs from './components/Clubs';
-import ClubProfile from './components/ClubProfile';
+import Bodies from './components/Bodies';
+import BodyProfile from './components/BodyProfile';
 import Openings from './components/Openings';
 import Messages from './components/Messages';
 
@@ -44,7 +44,7 @@ function AppContent() {
         onLoad: 'check-sso',
         token: storedToken,
         refreshToken: storedRefreshToken,
-        pkceMethod: 'S256', // PKCE is good
+        pkceMethod: 'S256',
         checkLoginIframe: false,
       })
       .then((auth) => {
@@ -100,8 +100,8 @@ function AppContent() {
               <Route path="/" element={<Navigate to="/feed" replace />} />
               <Route path="/feed" element={<Feed />} />
               <Route path="/connections" element={<Connections currentUserId={parsedToken?.sub} />} />
-              <Route path="/clubs" element={<Clubs userRoles={parsedToken?.realm_access?.roles || []} />} />
-              <Route path="/clubs/:id" element={<ClubProfile currentUserId={parsedToken?.sub} userRoles={parsedToken?.realm_access?.roles || []} />} />
+              <Route path="/bodies" element={<Bodies />} />
+              <Route path="/bodies/:id" element={<BodyProfile />} />
               <Route path="/openings" element={<Openings />} />
               <Route path="/messages" element={<Messages />} />
               <Route path="/messages/:userId" element={<Messages />} />

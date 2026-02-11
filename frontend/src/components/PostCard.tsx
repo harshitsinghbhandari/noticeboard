@@ -65,7 +65,7 @@ export default function PostCard({ post, onLike, onCommentAdded }: PostCardProps
                                 Opportunity: {post.title}
                             </h3>
                             <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-                                <span className="text-primary font-semibold">{post.club_name}</span>
+                                <span className="text-primary font-semibold">{post.body_name}</span>
                                 <span>•</span>
                                 <span>{timeAgo(post.created_at)}</span>
                             </div>
@@ -91,11 +91,11 @@ export default function PostCard({ post, onLike, onCommentAdded }: PostCardProps
                 {/* Post Header */}
                 <div className="flex items-center gap-3 mb-4">
                     <div className="h-11 w-11 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold overflow-hidden">
-                        {post.author_first_name?.[0] || post.club_name?.[0]}
+                        {post.author_first_name?.[0] || post.body_name?.[0]}
                     </div>
                     <div>
                         <h3 className="text-sm font-bold text-gray-900 dark:text-white leading-tight">
-                            {post.club_name ? post.club_name : `${post.author_first_name} ${post.author_last_name}`}
+                            {post.body_name ? post.body_name : `${post.author_first_name} ${post.author_last_name}`}
                         </h3>
                         <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
                             <span>{post.author_headline || 'Student'}</span>

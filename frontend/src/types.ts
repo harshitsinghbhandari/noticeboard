@@ -21,8 +21,8 @@ export interface Post {
     has_liked: boolean;
     comments_count: number;
     visibility: 'public' | 'connections_only';
-    club_id?: string;
-    club_name?: string;
+    body_id?: string;
+    body_name?: string;
 }
 
 export interface UserProfile {
@@ -46,17 +46,17 @@ export interface Notification {
     actor_last_name: string;
 }
 
+export type BodyRole = 'BODY_ADMIN' | 'BODY_MANAGER' | 'BODY_MEMBER';
 
-
-export interface Club {
+export interface Body {
     id: string;
     name: string;
     description: string;
     website_url?: string;
-    admin_id?: string;
     created_at: string;
     updated_at: string;
     is_following?: boolean;
+    user_role?: BodyRole | null;
 }
 
 export type JobType = 'full-time' | 'part-time' | 'internship' | 'contract';
@@ -64,7 +64,7 @@ export type ExperienceLevel = 'entry' | 'mid' | 'senior' | 'executive';
 
 export interface Opening {
     id: string;
-    club_id: string;
+    body_id: string;
     title: string;
     description: string;
     location_city: string;
@@ -73,7 +73,7 @@ export interface Opening {
     experience_level: ExperienceLevel;
     created_at: string;
     updated_at: string;
-    club_name?: string;
+    body_name?: string;
 }
 
 export interface Message {
@@ -104,7 +104,7 @@ export interface FeedItem {
     author_first_name?: string;
     author_last_name?: string;
     author_headline?: string;
-    club_name?: string;
+    body_name?: string;
     likes_count: number;
     has_liked: boolean;
     comments_count: number;
@@ -114,4 +114,13 @@ export interface FeedItem {
     experience_level?: ExperienceLevel;
     location_city?: string;
     location_country?: string;
+}
+
+export interface BodyMember {
+    body_id: string;
+    user_id: string;
+    role: BodyRole;
+    first_name: string;
+    last_name: string;
+    email: string;
 }

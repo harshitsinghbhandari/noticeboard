@@ -208,8 +208,8 @@ export default function Profile({ currentUserId }: ProfileProps) {
                             <div className="flex items-start gap-3">
                                 <span className="material-symbols-outlined text-gray-500">groups</span>
                                 <div>
-                                    <p className="text-sm font-semibold">Clubs</p>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">Coding Club, Hackathon Team</p>
+                                    <p className="text-sm font-semibold">Bodies</p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">Coding Body, Hackathon Team</p>
                                 </div>
                             </div>
                         </div>

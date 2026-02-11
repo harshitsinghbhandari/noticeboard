@@ -5,7 +5,7 @@ This guide details the direct messaging capabilities of the platform.
 ## 1. Messaging Overview
 The messaging system provides **1:1 direct communication** between users. It is designed for private discussions and coordination within the campus community.
 - **Supported:** 1:1 text-based messages.
-- **Not Supported:** Group chats, club-to-user messaging (as a club entity), and real-time voice/video.
+- **Not Supported:** Group chats, body-to-user messaging (as a body entity), and real-time voice/video.
 
 ## 2. Starting a Conversation
 ### Initiation

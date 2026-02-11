@@ -2,7 +2,7 @@ import { pool } from './pool';
 
 export interface Opening {
     id: string;
-    club_id: string;
+    body_id: string;
     title: string;
     description: string;
     location_city: string;
@@ -11,26 +11,26 @@ export interface Opening {
     experience_level: string;
     created_at: string;
     updated_at: string;
-    club_name?: string;
+    body_name?: string;
 }
 
 export async function createOpening(data: Omit<Opening, 'id' | 'created_at' | 'updated_at'>): Promise<Opening> {
-    const { club_id, title, description, location_city, location_country, job_type, experience_level } = data;
+    const { body_id, title, description, location_city, location_country, job_type, experience_level } = data;
     const res = await pool.query(
-        `INSERT INTO openings (club_id, title, description, location_city, location_country, job_type, experience_level)
+        `INSERT INTO openings (body_id, title, description, location_city, location_country, job_type, experience_level)
          VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-        [club_id, title, description, location_city, location_country, job_type, experience_level]
+        [body_id, title, description, location_city, location_country, job_type, experience_level]
     );
     return res.rows[0];
 }
 
-export async function listOpenings(filters: { club_id?: string, job_type?: string, experience_level?: string } = {}): Promise<Opening[]> {
-    let query = 'SELECT o.*, c.name as club_name FROM openings o JOIN clubs c ON o.club_id = c.id WHERE 1=1';
+export async function listOpenings(filters: { body_id?: string, job_type?: string, experience_level?: string } = {}): Promise<Opening[]> {
+    let query = 'SELECT o.*, b.name as body_name FROM openings o JOIN bodies b ON o.body_id = b.id WHERE 1=1';
     const params: any[] = [];
 
-    if (filters.club_id) {
-        params.push(filters.club_id);
-        query += ` AND o.club_id = $${params.length}`;
+    if (filters.body_id) {
+        params.push(filters.body_id);
+        query += ` AND o.body_id = $${params.length}`;
     }
     if (filters.job_type) {
         params.push(filters.job_type);
@@ -48,7 +48,7 @@ export async function listOpenings(filters: { club_id?: string, job_type?: strin
 
 export async function getOpening(id: string): Promise<Opening | null> {
     const res = await pool.query(
-        'SELECT o.*, c.name as club_name FROM openings o JOIN clubs c ON o.club_id = c.id WHERE o.id = $1',
+        'SELECT o.*, b.name as body_name FROM openings o JOIN bodies b ON o.body_id = b.id WHERE o.id = $1',
         [id]
     );
     return res.rows[0] || null;
