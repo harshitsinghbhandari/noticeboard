@@ -69,7 +69,7 @@ export default function Openings() {
             <div key={opening.id} className="bg-white p-6 rounded-lg shadow border border-gray-200">
               <div className="flex justify-between items-start">
                 <div>
-                  <h2 className="text-xl font-bold">{opening.title}</h2>
+                  <h2 className="text-xl font-bold text-black">{opening.title}</h2>
                   <p className="text-blue-600 font-medium">{opening.body_name}</p>
                 </div>
                 <Button variant="primary">Apply</Button>

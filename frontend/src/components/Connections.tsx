@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { timeAgo } from '../utils/timeAgo';
 import apiClient from '../api/client';
 
+import type { UserProfile } from '../types';
+
 interface Connection {
     id: string;
     requester_id: string;
@@ -28,6 +30,7 @@ export default function Connections({ currentUserId }: ConnectionsProps) {
     const [outgoing, setOutgoing] = useState<Connection[]>([]);
     const [myConnections, setMyConnections] = useState<Connection[]>([]);
     const [targetUserId, setTargetUserId] = useState('');
+    const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
     const [connectStatus, setConnectStatus] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -53,14 +56,14 @@ export default function Connections({ currentUserId }: ConnectionsProps) {
         fetchConnections();
     }, [fetchConnections]);
 
-    const sendRequest = async () => {
+    const sendRequest = async (userId: string) => {
         setConnectStatus(null);
-        if (!targetUserId.trim()) return;
 
         try {
-            await apiClient.post('/connections/request', { receiver_id: targetUserId });
+            await apiClient.post('/connections/request', { receiver_id: userId });
             setConnectStatus('Request sent!');
             setTargetUserId('');
+            setSearchResults([]);
             fetchConnections();
         } catch (error) {
             const err = error as { response?: { data?: { error?: string } } };
@@ -91,21 +94,50 @@ export default function Connections({ currentUserId }: ConnectionsProps) {
 
                     {/* Add Connection Search */}
                     <section className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-4">
-                        <h3 className="text-sm font-bold mb-3">Find Students</h3>
-                        <div className="flex gap-2">
+                        <h3 className="text-sm font-bold mb-3">Find Students to Connect</h3>
+                        <div className="relative">
                             <input
                                 type="text"
-                                placeholder="Enter User ID (UUID) to connect"
+                                placeholder="Search students by name or email..."
                                 value={targetUserId}
-                                onChange={(e) => setTargetUserId(e.target.value)}
-                                className="flex-1 bg-slate-100 dark:bg-slate-800 border-none rounded-lg py-2 px-4 text-sm focus:ring-2 focus:ring-primary/20"
+                                onChange={(e) => {
+                                    setTargetUserId(e.target.value);
+                                    if (e.target.value.length >= 2) {
+                                        apiClient.get(`/users/search?q=${e.target.value}`)
+                                            .then(res => setSearchResults(res.data))
+                                            .catch(console.error);
+                                    } else {
+                                        setSearchResults([]);
+                                    }
+                                }}
+                                className="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-lg py-2 px-4 text-sm focus:ring-2 focus:ring-primary/20 text-slate-900 dark:text-white"
                             />
-                            <button
-                                onClick={sendRequest}
-                                className="px-4 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary/90 transition-all shadow-sm"
-                            >
-                                Connect
-                            </button>
+                            {searchResults.length > 0 && (
+                                <div className="absolute top-full left-0 right-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 mt-1 max-h-60 overflow-y-auto rounded-lg shadow-xl z-20">
+                                    {searchResults.map(user => (
+                                        <div
+                                            key={user.id}
+                                            className="p-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 flex items-center justify-between group transition-colors"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
+                                                    {user.first_name[0]}
+                                                </div>
+                                                <div>
+                                                    <div className="font-semibold text-sm text-slate-900 dark:text-white">{user.first_name} {user.last_name}</div>
+                                                    <div className="text-xs text-slate-500 dark:text-slate-400">{user.email}</div>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => sendRequest(user.id)}
+                                                className="px-3 py-1.5 bg-primary text-white text-xs font-semibold rounded-md hover:bg-primary/90 transition-all opacity-0 group-hover:opacity-100 shadow-sm"
+                                            >
+                                                Connect
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                         {connectStatus && <p className="mt-2 text-xs font-medium text-primary">{connectStatus}</p>}
                     </section>

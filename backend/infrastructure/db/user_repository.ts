@@ -57,6 +57,7 @@ export interface UserRow {
     headline: string | null;
     created_at: Date;
     updated_at: Date;
+    is_system_admin: boolean; // Added field
 }
 
 export async function getUser(id: string): Promise<UserRow | null> {
@@ -68,4 +69,14 @@ export async function getUser(id: string): Promise<UserRow | null> {
     }
 
     return result.rows[0] as UserRow;
+}
+
+export async function searchUsers(queryStr: string): Promise<UserRow[]> {
+    const query = `
+        SELECT * FROM users 
+        WHERE email ILIKE $1 OR first_name ILIKE $1 OR last_name ILIKE $1
+        LIMIT 10
+    `;
+    const result = await pool.query(query, [`%${queryStr}%`]);
+    return result.rows as UserRow[];
 }

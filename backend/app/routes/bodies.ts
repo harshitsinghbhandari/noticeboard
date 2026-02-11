@@ -15,12 +15,48 @@ import {
     getMemberRole,
     countAdmins,
     checkBodyPermission,
+    createBodyWithAdmin,
     BodyAction
 } from '../../infrastructure/db/body_repository';
+import { getUser } from '../../infrastructure/db/user_repository';
 import { listPosts } from '../../infrastructure/db/post_repository';
 import { body, validationResult } from 'express-validator';
 
 const router = Router();
+
+// Create Body (System Admin Only)
+router.post('/',
+    authMiddleware,
+    body('name').notEmpty().withMessage('Name is required'),
+    body('initial_admin_id').notEmpty().withMessage('Initial admin ID is required'),
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        try {
+            const user = await getUser(req.user!.id);
+            if (!user || !user.is_system_admin) {
+                return res.status(403).json({ error: 'Forbidden: Only System Admins can create bodies' });
+            }
+
+            const { name, description, website_url, initial_admin_id } = req.body;
+
+            // Verify initial admin exists
+            const initialAdmin = await getUser(initial_admin_id);
+            if (!initialAdmin) {
+                return res.status(400).json({ error: 'Initial admin user not found' });
+            }
+
+            const newBody = await createBodyWithAdmin(name, description, website_url, initial_admin_id);
+            res.status(201).json(newBody);
+        } catch (error) {
+            console.error('Create body error', error);
+            res.status(500).json({ error: 'Internal server error' });
+        }
+    }
+);
 
 router.get('/', authMiddleware, async (req, res) => {
     try {

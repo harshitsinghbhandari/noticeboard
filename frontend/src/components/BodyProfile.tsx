@@ -23,6 +23,18 @@ export default function BodyProfile() {
   const [newMemberRole, setNewMemberRole] = useState<BodyRole>('BODY_MEMBER');
   const [addingMember, setAddingMember] = useState(false);
 
+  // Tabs
+  const [activeTab, setActiveTab] = useState<'posts' | 'openings'>('posts');
+
+  // Create Opening State
+  const [showCreateOpening, setShowCreateOpening] = useState(false);
+  const [newOpeningTitle, setNewOpeningTitle] = useState('');
+  const [newOpeningDesc, setNewOpeningDesc] = useState('');
+  const [newOpeningLocationCity, setNewOpeningLocationCity] = useState('');
+  const [newOpeningLocationCountry, setNewOpeningLocationCountry] = useState('');
+  const [newOpeningJobType, setNewOpeningJobType] = useState('full_time');
+  const [newOpeningExpLevel, setNewOpeningExpLevel] = useState('fresher');
+
   const fetchBodyData = useCallback(async () => {
     try {
       const [bodyRes, openingsRes, postsRes] = await Promise.all([
@@ -36,8 +48,8 @@ export default function BodyProfile() {
       setPosts(postsRes.data);
 
       if (bodyRes.data.user_role === 'BODY_ADMIN') {
-          const membersRes = await apiClient.get(`/bodies/${id}/members`);
-          setMembers(membersRes.data);
+        const membersRes = await apiClient.get(`/bodies/${id}/members`);
+        setMembers(membersRes.data);
       }
     } catch (err) {
       console.error('Failed to fetch body data', err);
@@ -142,37 +154,63 @@ export default function BodyProfile() {
     e.preventDefault();
     setAddingMember(true);
     try {
-        await apiClient.post(`/bodies/${id}/members`, {
-            user_id: newMemberUserId,
-            role: newMemberRole
-        });
-        setNewMemberUserId('');
-        // Refresh members
-        const membersRes = await apiClient.get(`/bodies/${id}/members`);
-        setMembers(membersRes.data);
+      await apiClient.post(`/bodies/${id}/members`, {
+        user_id: newMemberUserId,
+        role: newMemberRole
+      });
+      setNewMemberUserId('');
+      // Refresh members
+      const membersRes = await apiClient.get(`/bodies/${id}/members`);
+      setMembers(membersRes.data);
     } catch (err) {
-        console.error('Failed to add member', err);
-        alert('Failed to add member');
+      console.error('Failed to add member', err);
+      alert('Failed to add member');
     } finally {
-        setAddingMember(false);
+      setAddingMember(false);
     }
   };
 
   const handleRemoveMember = async (userId: string) => {
     try {
-        await apiClient.delete(`/bodies/${id}/members/${userId}`);
-        setMembers(prev => prev.filter(m => m.user_id !== userId));
+      await apiClient.delete(`/bodies/${id}/members/${userId}`);
+      setMembers(prev => prev.filter(m => m.user_id !== userId));
     } catch (err) {
-        console.error('Failed to remove member', err);
+      console.error('Failed to remove member', err);
     }
   };
 
   const handleChangeRole = async (userId: string, role: BodyRole) => {
     try {
-        await apiClient.put(`/bodies/${id}/members/${userId}`, { role });
-        setMembers(prev => prev.map(m => m.user_id === userId ? { ...m, role } : m));
+      await apiClient.put(`/bodies/${id}/members/${userId}`, { role });
+      setMembers(prev => prev.map(m => m.user_id === userId ? { ...m, role } : m));
     } catch (err) {
-        console.error('Failed to change role', err);
+      console.error('Failed to change role', err);
+    }
+  };
+
+  const handleCreateOpening = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await apiClient.post('/openings', {
+        body_id: id,
+        title: newOpeningTitle,
+        description: newOpeningDesc,
+        location_city: newOpeningLocationCity,
+        location_country: newOpeningLocationCountry,
+        job_type: newOpeningJobType,
+        experience_level: newOpeningExpLevel
+      });
+      setShowCreateOpening(false);
+      // Reset form
+      setNewOpeningTitle('');
+      setNewOpeningDesc('');
+      setNewOpeningLocationCity('');
+      setNewOpeningLocationCountry('');
+      // Refresh data
+      fetchBodyData();
+    } catch (err) {
+      console.error('Failed to create opening', err);
+      alert('Failed to create opening');
     }
   };
 
@@ -205,12 +243,12 @@ export default function BodyProfile() {
           </div>
           <div className="flex gap-2">
             {isAdmin && (
-                <Button variant="outline" onClick={() => setShowMembers(!showMembers)}>
-                    {showMembers ? 'Show Posts' : 'Manage Members'}
-                </Button>
+              <Button variant="outline" onClick={() => setShowMembers(!showMembers)}>
+                {showMembers ? 'Show Posts' : 'Manage Members'}
+              </Button>
             )}
             <Button variant={body.is_following ? 'outline' : 'primary'} onClick={toggleFollow}>
-                {body.is_following ? 'Unfollow' : 'Follow'}
+              {body.is_following ? 'Unfollow' : 'Follow'}
             </Button>
           </div>
         </div>
@@ -218,57 +256,74 @@ export default function BodyProfile() {
       </div>
 
       {showMembers && isAdmin ? (
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-              <h2 className="text-xl font-bold mb-4">Member Management</h2>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+          <h2 className="text-xl font-bold mb-4">Member Management</h2>
 
-              <form onSubmit={handleAddMember} className="mb-6 flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="User ID"
-                    value={newMemberUserId}
-                    onChange={e => setNewMemberUserId(e.target.value)}
-                    className="flex-grow p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
-                    required
-                  />
+          <form onSubmit={handleAddMember} className="mb-6 flex gap-2">
+            <input
+              type="text"
+              placeholder="User ID"
+              value={newMemberUserId}
+              onChange={e => setNewMemberUserId(e.target.value)}
+              className="flex-grow p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
+              required
+            />
+            <select
+              value={newMemberRole}
+              onChange={e => setNewMemberRole(e.target.value as BodyRole)}
+              className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
+            >
+              <option value="BODY_MEMBER">Member</option>
+              <option value="BODY_MANAGER">Manager</option>
+              <option value="BODY_ADMIN">Admin</option>
+            </select>
+            <Button type="submit" disabled={addingMember}>Add Member</Button>
+          </form>
+
+          <div className="space-y-4">
+            {members.map(member => (
+              <div key={member.user_id} className="flex justify-between items-center p-3 border-b dark:border-gray-700">
+                <div>
+                  <p className="font-semibold">{member.first_name} {member.last_name}</p>
+                  <p className="text-sm text-gray-500">{member.email}</p>
+                </div>
+                <div className="flex gap-2 items-center">
                   <select
-                    value={newMemberRole}
-                    onChange={e => setNewMemberRole(e.target.value as BodyRole)}
-                    className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
+                    value={member.role}
+                    onChange={e => handleChangeRole(member.user_id, e.target.value as BodyRole)}
+                    className="p-1 border rounded text-sm dark:bg-gray-700"
                   >
-                      <option value="BODY_MEMBER">Member</option>
-                      <option value="BODY_MANAGER">Manager</option>
-                      <option value="BODY_ADMIN">Admin</option>
+                    <option value="BODY_MEMBER">Member</option>
+                    <option value="BODY_MANAGER">Manager</option>
+                    <option value="BODY_ADMIN">Admin</option>
                   </select>
-                  <Button type="submit" disabled={addingMember}>Add Member</Button>
-              </form>
-
-              <div className="space-y-4">
-                  {members.map(member => (
-                      <div key={member.user_id} className="flex justify-between items-center p-3 border-b dark:border-gray-700">
-                          <div>
-                              <p className="font-semibold">{member.first_name} {member.last_name}</p>
-                              <p className="text-sm text-gray-500">{member.email}</p>
-                          </div>
-                          <div className="flex gap-2 items-center">
-                              <select
-                                value={member.role}
-                                onChange={e => handleChangeRole(member.user_id, e.target.value as BodyRole)}
-                                className="p-1 border rounded text-sm dark:bg-gray-700"
-                              >
-                                  <option value="BODY_MEMBER">Member</option>
-                                  <option value="BODY_MANAGER">Manager</option>
-                                  <option value="BODY_ADMIN">Admin</option>
-                              </select>
-                              <Button variant="danger" size="sm" onClick={() => handleRemoveMember(member.user_id)}>Remove</Button>
-                          </div>
-                      </div>
-                  ))}
-                  {members.length === 0 && <p className="text-center text-gray-500">No members found.</p>}
+                  <Button variant="danger" size="sm" onClick={() => handleRemoveMember(member.user_id)}>Remove</Button>
+                </div>
               </div>
+            ))}
+            {members.length === 0 && <p className="text-center text-gray-500">No members found.</p>}
           </div>
+        </div>
       ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
+        <div>
+          {/* Tabs */}
+          <div className="flex border-b border-gray-200 dark:border-gray-700 mb-6">
+            <button
+              className={`py-2 px-4 font-semibold ${activeTab === 'posts' ? 'border-b-2 border-primary text-primary' : 'text-gray-500 hover:text-gray-700'}`}
+              onClick={() => setActiveTab('posts')}
+            >
+              Posts
+            </button>
+            <button
+              className={`py-2 px-4 font-semibold ${activeTab === 'openings' ? 'border-b-2 border-primary text-primary' : 'text-gray-500 hover:text-gray-700'}`}
+              onClick={() => setActiveTab('openings')}
+            >
+              Openings
+            </button>
+          </div>
+
+          {activeTab === 'posts' && (
+            <div className="max-w-3xl mx-auto">
               <h2 className="text-xl font-bold mb-4">Latest Updates</h2>
 
               {canPost && (
@@ -312,29 +367,116 @@ export default function BodyProfile() {
                 </div>
               )}
             </div>
-            <div>
-              <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-bold">Openings</h2>
-                  {canCreateEvent && (
-                      <Button size="sm" onClick={() => alert('Create Opening logic not fully implemented in UI yet')}>+ New</Button>
-                  )}
+          )}
+
+          {activeTab === 'openings' && (
+            <div className="max-w-3xl mx-auto">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold">Openings</h2>
+                {canCreateEvent && (
+                  <Button size="sm" onClick={() => setShowCreateOpening(true)}>+ Create Opening</Button>
+                )}
               </div>
-              {openings.length > 0 ? (
-                openings.map(opening => (
-                  <div key={opening.id} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700 mb-4">
-                    <h3 className="font-bold text-lg">{opening.title}</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">{opening.job_type} • {opening.experience_level}</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-500">{opening.location_city}, {opening.location_country}</p>
-                    <Button variant="ghost" size="sm" className="mt-2 w-full">Apply Now</Button>
+
+              {showCreateOpening && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                  <div className="bg-white dark:bg-gray-800 p-6 rounded-lg w-full max-w-md">
+                    <h3 className="text-xl font-bold mb-4">Create New Opening</h3>
+                    <form onSubmit={handleCreateOpening} className="space-y-4">
+                      <input
+                        placeholder="Job Title"
+                        className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
+                        value={newOpeningTitle}
+                        onChange={e => setNewOpeningTitle(e.target.value)}
+                        required
+                      />
+                      <textarea
+                        placeholder="Description"
+                        className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
+                        rows={3}
+                        value={newOpeningDesc}
+                        onChange={e => setNewOpeningDesc(e.target.value)}
+                        required
+                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          placeholder="City"
+                          className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
+                          value={newOpeningLocationCity}
+                          onChange={e => setNewOpeningLocationCity(e.target.value)}
+                          required
+                        />
+                        <input
+                          placeholder="Country"
+                          className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
+                          value={newOpeningLocationCountry}
+                          onChange={e => setNewOpeningLocationCountry(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <select
+                          className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
+                          value={newOpeningJobType}
+                          onChange={e => setNewOpeningJobType(e.target.value)}
+                        >
+                          <option value="full_time">Full Time</option>
+                          <option value="part_time">Part Time</option>
+                          <option value="internship">Internship</option>
+                        </select>
+                        <select
+                          className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
+                          value={newOpeningExpLevel}
+                          onChange={e => setNewOpeningExpLevel(e.target.value)}
+                        >
+                          <option value="fresher">Fresher</option>
+                          <option value="1-2_years">1-2 Years</option>
+                          <option value="3+_years">3+ Years</option>
+                        </select>
+                      </div>
+                      <div className="flex justify-end gap-2 mt-4">
+                        <Button variant="outline" type="button" onClick={() => setShowCreateOpening(false)}>Cancel</Button>
+                        <Button type="submit">Create</Button>
+                      </div>
+                    </form>
                   </div>
-                ))
-              ) : (
-                <div className="bg-white dark:bg-gray-800 p-4 rounded shadow border border-gray-200 dark:border-gray-700 text-center text-gray-500">
-                  No active openings.
                 </div>
               )}
+
+              <div className="space-y-4">
+                {openings.length > 0 ? (
+                  openings.map(opening => (
+                    <PostCard
+                      key={opening.id}
+                      post={{
+                        id: opening.id,
+                        type: 'opening',
+                        content: opening.description,
+                        created_at: opening.created_at,
+                        likes_count: 0,
+                        has_liked: false,
+                        comments_count: 0,
+                        title: opening.title,
+                        job_type: opening.job_type,
+                        experience_level: opening.experience_level,
+                        location_city: opening.location_city,
+                        location_country: opening.location_country,
+                        body_name: body.name
+                      } as any}
+                      onLike={() => { }}
+                      onCommentAdded={() => { }}
+                    />
+                  ))
+                ) : (
+                  <div className="bg-white dark:bg-gray-800 p-8 rounded shadow border border-gray-200 dark:border-gray-700 text-center text-gray-500">
+                    <span className="material-symbols-outlined text-4xl mb-2 text-gray-300">work_off</span>
+                    <p>No active openings at this time.</p>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          )}
+        </div>
       )}
     </div>
   );

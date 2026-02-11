@@ -1,10 +1,24 @@
 import { Router } from 'express';
 import { authMiddleware } from '../../infrastructure/http/auth_middleware';
-import { getUser } from '../../infrastructure/db/user_repository';
+import { getUser, searchUsers } from '../../infrastructure/db/user_repository';
 import { getProfile, upsertProfile } from '../../infrastructure/db/profile_repository';
 import { listUserPosts } from '../../infrastructure/db/post_repository';
 
 const router = Router();
+
+router.get('/users/search', authMiddleware, async (req, res) => {
+    const query = req.query.q as string;
+    if (!query || query.length < 2) {
+        return res.json([]);
+    }
+    try {
+        const users = await searchUsers(query);
+        res.json(users);
+    } catch (error) {
+        console.error('Search users error', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
 
 router.get('/me', authMiddleware, async (req, res) => {
     if (!req.user) {

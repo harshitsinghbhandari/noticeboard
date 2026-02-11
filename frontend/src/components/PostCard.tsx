@@ -89,16 +89,17 @@ export default function PostCard({ post, onLike, onCommentAdded }: PostCardProps
         <article className="bg-white dark:bg-[#1a242f] rounded-xl shadow-sm border border-[#e8edf3] dark:border-gray-800 overflow-hidden hover:border-primary/20 transition-all">
             <div className="p-5">
                 {/* Post Header */}
+                {/* Post Header */}
                 <div className="flex items-center gap-3 mb-4">
                     <div className="h-11 w-11 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold overflow-hidden">
-                        {post.author_first_name?.[0] || post.body_name?.[0]}
+                        {post.body_name ? post.body_name[0] : post.author_first_name?.[0]}
                     </div>
                     <div>
                         <h3 className="text-sm font-bold text-gray-900 dark:text-white leading-tight">
                             {post.body_name ? post.body_name : `${post.author_first_name} ${post.author_last_name}`}
                         </h3>
                         <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-                            <span>{post.author_headline || 'Student'}</span>
+                            <span>{post.body_name ? 'Organization' : (post.author_headline || 'Student')}</span>
                             <span>•</span>
                             <span>{timeAgo(post.created_at)}</span>
                         </div>

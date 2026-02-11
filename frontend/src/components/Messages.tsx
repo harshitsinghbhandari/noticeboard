@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
-import type { Message, Conversation } from '../types';
+import type { Message, Conversation, UserProfile } from '../types';
 import { Button } from './ui/Button';
 import apiClient from '../api/client';
 
@@ -13,7 +13,7 @@ export default function Messages() {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [newChatId, setNewChatId] = useState('');
-  const [isStartingChat, setIsStartingChat] = useState(false);
+  const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
 
   useEffect(() => {
     fetchConversations();
@@ -69,42 +69,27 @@ export default function Messages() {
     }
   };
 
-  const handleStartChat = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newChatId.trim()) return;
-    setIsStartingChat(true);
+  const handleSelectUser = async (user: UserProfile) => {
+    setNewChatId('');
+    setSearchResults([]);
 
-    try {
-      // Check if we already have a conversation with this user
-      const existing = conversations.find(c => c.other_id === newChatId);
-      if (existing) {
-        setSelectedUser(newChatId);
-        setNewChatId('');
-        setIsStartingChat(false);
-        return;
-      }
-
-      // Fetch user details to verify existence and get name
-      const res = await apiClient.get(`/users/${newChatId}`);
-      const user = res.data;
-
-      // Add temporary conversation
-      const tempConv: Conversation = {
-        other_id: user.id,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        message_text: 'Start a conversation',
-        created_at: new Date().toISOString()
-      };
-      setConversations(prev => [tempConv, ...prev]);
+    // Check if conversation exists
+    const existing = conversations.find(c => c.other_id === user.id);
+    if (existing) {
       setSelectedUser(user.id);
-      setNewChatId('');
-    } catch (error) {
-      console.error('Failed to start chat', error);
-      alert('User not found or invalid ID');
-    } finally {
-      setIsStartingChat(false);
+      return;
     }
+
+    // Add temporary conversation
+    const tempConv: Conversation = {
+      other_id: user.id,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      message_text: 'Start a conversation',
+      created_at: new Date().toISOString()
+    };
+    setConversations(prev => [tempConv, ...prev]);
+    setSelectedUser(user.id);
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -130,18 +115,40 @@ export default function Messages() {
       {/* Sidebar */}
       <div className="w-1/3 bg-white rounded-lg shadow border border-gray-200 overflow-y-auto hidden md:block">
         <h2 className="p-4 text-xl font-bold border-b text-black">Messages</h2>
-        <div className="p-4 border-b bg-gray-50">
-          <form onSubmit={handleStartChat} className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Enter User UUID..."
-              className="flex-1 border p-2 rounded text-black border-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              value={newChatId}
-              onChange={(e) => setNewChatId(e.target.value)}
-            />
-            <Button type="submit" disabled={isStartingChat} variant="outline" className="text-xs text-black">
-              {isStartingChat ? '...' : 'Go'}
-            </Button>
+        <div className="p-4 border-b bg-gray-50 relative">
+          <form onSubmit={(e) => e.preventDefault()} className="flex gap-2">
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                placeholder="Search users to message..."
+                className="w-full border p-2 rounded text-black border-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={newChatId}
+                onChange={(e) => {
+                  setNewChatId(e.target.value);
+                  if (e.target.value.length >= 2) {
+                    apiClient.get(`/users/search?q=${e.target.value}`)
+                      .then(res => setSearchResults(res.data))
+                      .catch(console.error);
+                  } else {
+                    setSearchResults([]);
+                  }
+                }}
+              />
+              {searchResults.length > 0 && (
+                <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 mt-1 max-h-48 overflow-y-auto rounded shadow-lg z-10">
+                  {searchResults.map(user => (
+                    <div
+                      key={user.id}
+                      onClick={() => handleSelectUser(user)}
+                      className="p-2 hover:bg-gray-100 cursor-pointer text-black"
+                    >
+                      <div className="font-bold">{user.first_name} {user.last_name}</div>
+                      <div className="text-xs text-gray-500">{user.email}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </form>
         </div>
         {conversations.map(conv => (

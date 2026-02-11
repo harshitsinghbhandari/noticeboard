@@ -32,6 +32,7 @@ export interface UserProfile {
     last_name: string;
     about?: string;
     headline?: string;
+    is_system_admin: boolean;
 }
 
 export interface Notification {
@@ -59,8 +60,8 @@ export interface Body {
     user_role?: BodyRole | null;
 }
 
-export type JobType = 'full-time' | 'part-time' | 'internship' | 'contract';
-export type ExperienceLevel = 'entry' | 'mid' | 'senior' | 'executive';
+export type JobType = 'full_time' | 'part_time' | 'internship';
+export type ExperienceLevel = 'fresher' | '1-2_years' | '3+_years';
 
 export interface Opening {
     id: string;

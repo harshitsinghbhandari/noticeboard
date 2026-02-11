@@ -24,6 +24,34 @@ export enum BodyAction {
     EDIT_BODY = 'EDIT_BODY',
 }
 
+export async function createBodyWithAdmin(name: string, description: string, websiteUrl: string, adminUserId: string): Promise<Body> {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        // Create Body
+        const bodyRes = await client.query(
+            'INSERT INTO bodies (name, description, website_url) VALUES ($1, $2, $3) RETURNING *',
+            [name, description, websiteUrl]
+        );
+        const newBody = bodyRes.rows[0];
+
+        // Add Initial Admin
+        await client.query(
+            "INSERT INTO body_memberships (body_id, user_id, role) VALUES ($1, $2, 'BODY_ADMIN')",
+            [newBody.id, adminUserId]
+        );
+
+        await client.query('COMMIT');
+        return newBody;
+    } catch (e) {
+        await client.query('ROLLBACK');
+        throw e;
+    } finally {
+        client.release();
+    }
+}
+
 export async function listBodies(): Promise<Body[]> {
     const res = await pool.query('SELECT * FROM bodies ORDER BY name ASC');
     return res.rows;
@@ -117,7 +145,15 @@ export async function countAdmins(bodyId: string): Promise<number> {
     return parseInt(res.rows[0].count);
 }
 
+import { getUser } from './user_repository'; // Import getUser
+
 export async function checkBodyPermission(userId: string, bodyId: string, action: BodyAction): Promise<boolean> {
+    // Global override for SYSTEM_ADMIN
+    const user = await getUser(userId);
+    if (user && user.is_system_admin) {
+        return true;
+    }
+
     const role = await getMemberRole(bodyId, userId);
     if (!role) return false;
 
