@@ -72,11 +72,11 @@ export default function Layout({ children, userEmail, currentUserId, onLogout }:
                                 Connections
                             </Link>
                             <Link
-                                to="/clubs"
-                                className={`${activeTab === 'clubs' ? 'text-primary font-semibold' : 'text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-primary font-medium'} text-sm transition-colors flex items-center gap-1`}
+                                to="/bodies"
+                                className={`${activeTab === 'bodies' ? 'text-primary font-semibold' : 'text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-primary font-medium'} text-sm transition-colors flex items-center gap-1`}
                             >
                                 <span className="material-symbols-outlined text-lg">groups</span>
-                                Clubs
+                                Bodies
                             </Link>
                             <Link
                                 to="/openings"
@@ -161,7 +161,7 @@ export default function Layout({ children, userEmail, currentUserId, onLogout }:
                         {[
                             { to: '/feed', label: 'Feed', icon: 'home', tab: 'feed' },
                             { to: '/connections', label: 'Connections', icon: 'group', tab: 'connections' },
-                            { to: '/clubs', label: 'Clubs', icon: 'groups', tab: 'clubs' },
+                            { to: '/bodies', label: 'Bodies', icon: 'groups', tab: 'bodies' },
                             { to: '/openings', label: 'Openings', icon: 'work', tab: 'openings' },
                             { to: '/messages', label: 'Messages', icon: 'mail', tab: 'messages' },
                             { to: '/notifications', label: 'Notifications', icon: 'notifications', tab: 'notifications' },

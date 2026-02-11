@@ -10,19 +10,19 @@ export interface Post {
   author_first_name: string;
   author_last_name: string;
   author_headline?: string;
+  body_id?: string;
+  body_name?: string;
 }
 
-export async function createPost(authorId: string, content: string, visibility: 'public' | 'connections_only' = 'public', clubId?: string): Promise<Post> {
+export async function createPost(authorId: string, content: string, visibility: 'public' | 'connections_only' = 'public', bodyId?: string): Promise<Post> {
   const query = `
-    INSERT INTO posts (author_id, content, visibility, club_id)
+    INSERT INTO posts (author_id, content, visibility, body_id)
     VALUES ($1, $2, $3, $4)
     RETURNING *;
   `;
-  const result = await pool.query(query, [authorId, content, visibility, clubId || null]);
+  const result = await pool.query(query, [authorId, content, visibility, bodyId || null]);
   const post = result.rows[0];
 
-  // We need to fetch the author details for the newly created post to match the interface
-  // or we can make them optional. For now, let's fetch them.
   const userQuery = 'SELECT first_name, last_name, headline FROM users WHERE id = $1';
   const userResult = await pool.query(userQuery, [authorId]);
   const user = userResult.rows[0];
@@ -96,12 +96,7 @@ export async function removeReaction(postId: string, userId: string): Promise<vo
 }
 
 export async function getPostReactions(postId: string): Promise<{ count: number, user_has_liked: boolean, user_id: string }> {
-  // This is tricky because we need the current user ID to know if they liked it.
-  // For now, let's just return count. But wait, feed needs to show if I liked it.
-  // Let's modify listPosts to include this info instead of a separate call for list.
-  // But for a single post view or updates, we might need this.
-  // Actually, let's just support listing posts with reaction info in the main query.
-  return { count: 0, user_has_liked: false, user_id: '' }; // Placeholder if needed
+  return { count: 0, user_has_liked: false, user_id: '' };
 }
 
 export interface FeedItem {
@@ -112,7 +107,7 @@ export interface FeedItem {
   author_first_name: string | null;
   author_last_name: string | null;
   author_headline: string | null;
-  club_name: string | null;
+  body_name: string | null;
   likes_count: number;
   has_liked: boolean;
   comments_count: number;
@@ -123,26 +118,26 @@ export interface FeedItem {
   location_country: string | null;
 }
 
-export async function listPosts(userId: string, limit: number = 20, cursor?: string, clubId?: string): Promise<Post[]> {
+export async function listPosts(userId: string, limit: number = 20, cursor?: string, bodyId?: string): Promise<Post[]> {
   let query = `
       SELECT p.*, 
              u.first_name as author_first_name, 
              u.last_name as author_last_name,
              u.headline as author_headline,
-             cl.name as club_name,
+             b.name as body_name,
              (SELECT COUNT(*) FROM reactions r WHERE r.post_id = p.id AND r.type = 'like') as likes_count,
              (SELECT COUNT(*) > 0 FROM reactions r WHERE r.post_id = p.id AND r.user_id = $1 AND r.type = 'like') as has_liked,
              (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) as comments_count
       FROM posts p
       JOIN users u ON p.author_id = u.id
-      LEFT JOIN clubs cl ON p.club_id = cl.id
+      LEFT JOIN bodies b ON p.body_id = b.id
       WHERE 1=1
     `;
   const values: any[] = [userId, limit];
 
-  if (clubId) {
-    query += ' AND p.club_id = $3';
-    values.push(clubId);
+  if (bodyId) {
+    query += ' AND p.body_id = $3';
+    values.push(bodyId);
   } else {
     query += ` AND (
         p.visibility = 'public' 
@@ -157,8 +152,8 @@ export async function listPosts(userId: string, limit: number = 20, cursor?: str
             )
         )
         OR EXISTS (
-            SELECT 1 FROM club_followers cf
-            WHERE cf.user_id = $1 AND cf.club_id = p.club_id
+            SELECT 1 FROM body_followers bf
+            WHERE bf.user_id = $1 AND bf.body_id = p.body_id
         )
       )`;
   }
@@ -205,14 +200,14 @@ export async function getAggregatedFeed(userId: string, limit: number = 20, curs
              u.first_name as author_first_name,
              u.last_name as author_last_name,
              u.headline as author_headline,
-             cl.name as club_name,
+             b.name as body_name,
              (SELECT COUNT(*) FROM reactions r WHERE r.post_id = p.id AND r.type = 'like') as likes_count,
              (SELECT COUNT(*) > 0 FROM reactions r WHERE r.post_id = p.id AND r.user_id = $1 AND r.type = 'like') as has_liked,
              (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) as comments_count,
              null as title, null as job_type, null as experience_level, null as location_city, null as location_country
       FROM posts p
       JOIN users u ON p.author_id = u.id
-      LEFT JOIN clubs cl ON p.club_id = cl.id
+      LEFT JOIN bodies b ON p.body_id = b.id
       WHERE (
         p.visibility = 'public'
         OR p.author_id = $1
@@ -226,8 +221,8 @@ export async function getAggregatedFeed(userId: string, limit: number = 20, curs
             )
         )
         OR EXISTS (
-            SELECT 1 FROM club_followers cf
-            WHERE cf.user_id = $1 AND cf.club_id = p.club_id
+            SELECT 1 FROM body_followers bf
+            WHERE bf.user_id = $1 AND bf.body_id = p.body_id
         )
       )
     `;
@@ -235,11 +230,11 @@ export async function getAggregatedFeed(userId: string, limit: number = 20, curs
   const openingsPart = `
       SELECT o.id, o.description as content, o.created_at, 'opening' as type,
              null as author_first_name, null as author_last_name, null as author_headline,
-             cl.name as club_name,
+             b.name as body_name,
              0 as likes_count, false as has_liked, 0 as comments_count,
              o.title, o.job_type, o.experience_level, o.location_city, o.location_country
       FROM openings o
-      JOIN clubs cl ON o.club_id = cl.id
+      JOIN bodies b ON o.body_id = b.id
     `;
 
   let combinedQuery = `

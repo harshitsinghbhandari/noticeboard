@@ -70,7 +70,7 @@ export default function Openings() {
               <div className="flex justify-between items-start">
                 <div>
                   <h2 className="text-xl font-bold">{opening.title}</h2>
-                  <p className="text-blue-600 font-medium">{opening.club_name}</p>
+                  <p className="text-blue-600 font-medium">{opening.body_name}</p>
                 </div>
                 <Button variant="primary">Apply</Button>
               </div>

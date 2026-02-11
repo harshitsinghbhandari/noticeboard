@@ -28,8 +28,6 @@ JWT_SECRET=your_jwt_secret_if_needed
 
 - **Realm Name:** `noticeboard`
 - **Roles:**
-  - `CLUB_ADMIN`: Permission to create and update clubs.
-  - `CLUB_CONVENER`: Permission to post on behalf of clubs and manage openings.
   - `USER`: Standard user permissions (default).
 - **Backend Client (`noticeboard-backend`):**
   - Access Type: `confidential`
@@ -47,14 +45,14 @@ JWT_SECRET=your_jwt_secret_if_needed
 2. Create the database: `CREATE DATABASE noticeboard;`
 3. The migrations will be applied in order. New tables for Phase 2:
 
-- **clubs**: UUID PK, name, description, website_url, timestamps.
-- **club_followers**: UUID PK, club_id (FK), user_id (FK), created_at.
-- **openings**: UUID PK, club_id (FK), title, description, location_city, location_country, job_type (ENUM), experience_level (ENUM), timestamps.
+- **bodies**: UUID PK, name, description, website_url, timestamps.
+- **body_followers**: UUID PK, body_id (FK), user_id (FK), created_at.
+- **openings**: UUID PK, body_id (FK), title, description, location_city, location_country, job_type (ENUM), experience_level (ENUM), timestamps.
 - **messages**: UUID PK, sender_id (FK), receiver_id (FK), message_text, attachment_url, timestamps, read_at.
 
 ### Table Definitions (Migrations)
 New migration files will be created in `backend/infrastructure/db/migrations/`:
-- `007_clubs.sql`
+- `007_bodies.sql`
 - `008_openings.sql`
 - `009_messages.sql`
 
@@ -77,24 +75,26 @@ cd frontend
 ## 5. Routing & Pages
 
 ### Frontend Routes
-- `/feed`: Aggregated feed including connection posts, followed club posts, and openings.
-- `/clubs`: Directory of all clubs.
-- `/clubs/:id`: Club profile page showing details, posts, and openings.
+- `/feed`: Aggregated feed including connection posts, followed body posts, and openings.
+- `/bodies`: Directory of all bodies.
+- `/bodies/:id`: Body profile page showing details, posts, and openings.
 - `/openings`: Searchable list of opportunities.
 - `/messages`: 1:1 messaging interface.
 
 ### Page Responsibilities
 - **Feed**: Fetches and merges content from multiple sources.
-- **Club Profile**: Manages club-specific content and following status.
+- **Body Profile**: Manages body-specific content and following status.
 - **Messages**: Real-time (or polled) chat between users.
 
-## 6. Permissions & Roles Enforcement
+## 6. Permissions & Roles Enforcement (via body_memberships)
 
-| Role | Endpoint/Action |
+Authority is now enforced via the `body_memberships` table.
+
+| Role | Permissions |
 | :--- | :--- |
-| `CLUB_ADMIN` | `POST /clubs`, `PUT /clubs/:id`, `DELETE /clubs/:id` |
-| `CLUB_CONVENER` | `POST /posts` (with `club_id`), `POST /openings`, `PUT /openings/:id`, `DELETE /openings/:id` |
-| `USER` | `POST /clubs/:id/follow`, `GET /messages`, `POST /messages` |
+| `BODY_ADMIN` | Full control: Edit/Delete body, Manage members (Add/Remove/Promote), Create posts/openings. |
+| `BODY_MANAGER` | Edit body, Create posts, Create openings. |
+| `BODY_MEMBER` | Create posts only. |
 
 ## 7. Additional Notes
 

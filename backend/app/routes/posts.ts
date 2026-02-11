@@ -1,26 +1,23 @@
 import { Router } from 'express';
 import { authMiddleware } from '../../infrastructure/http/auth_middleware';
 import { createPost, getAggregatedFeed, getPost, addComment, listComments, addReaction, removeReaction } from '../../infrastructure/db/post_repository';
-import { getClub } from '../../infrastructure/db/club_repository';
+import { checkBodyPermission, BodyAction } from '../../infrastructure/db/body_repository';
 import { createNotification } from '../../infrastructure/db/notification_repository';
 
 const router = Router();
 
 router.post('/', authMiddleware, async (req, res) => {
     if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
-    const { content, visibility, club_id } = req.body;
+    const { content, visibility, body_id } = req.body;
 
     if (!content || typeof content !== 'string') {
         return res.status(400).json({ error: 'Content is required' });
     }
 
-    if (club_id) {
-        if (!req.user.roles.includes('CLUB_CONVENER')) {
-            return res.status(403).json({ error: 'Only club conveners can post as a club' });
-        }
-        const club = await getClub(club_id);
-        if (!club || club.admin_id !== req.user.id) {
-            return res.status(403).json({ error: 'Forbidden: You are not authorized to post for this club' });
+    if (body_id) {
+        const hasPermission = await checkBodyPermission(req.user.id, body_id, BodyAction.CREATE_POST);
+        if (!hasPermission) {
+            return res.status(403).json({ error: 'Forbidden: You are not authorized to post for this body' });
         }
     }
 
@@ -28,7 +25,7 @@ router.post('/', authMiddleware, async (req, res) => {
     const postVisibility = (visibility && validVisibility.includes(visibility)) ? visibility : 'public';
 
     try {
-        const post = await createPost(req.user.id, content, postVisibility, club_id);
+        const post = await createPost(req.user.id, content, postVisibility, body_id);
         res.status(201).json(post);
     } catch (error) {
         console.error('Create post error', error);
