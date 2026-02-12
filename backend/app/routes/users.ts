@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authMiddleware } from '../../infrastructure/http/auth_middleware';
 import { getUser, searchUsers } from '../../infrastructure/db/user_repository';
+import { io } from '../server';
 import { getProfile, upsertProfile } from '../../infrastructure/db/profile_repository';
 import { listUserPosts } from '../../infrastructure/db/post_repository';
 
@@ -174,6 +175,11 @@ router.post('/users/:id/block', authMiddleware, async (req, res) => {
 
     try {
         await blockUser(req.user.id, id);
+
+        io.to(`user:${id}`).emit("user:blocked", {
+            by: req.user.id
+        });
+
         res.json({ status: 'blocked' });
     } catch (error: any) {
         console.error('Block user error', error);

@@ -3,6 +3,7 @@ import { useParams, useLocation } from 'react-router-dom';
 import type { Message, Conversation, UserProfile } from '../types';
 import { Button } from './ui/Button';
 import apiClient from '../api/client';
+import { socket } from '../utils/socket';
 
 export default function Messages() {
   const { userId } = useParams();
@@ -61,9 +62,45 @@ export default function Messages() {
   useEffect(() => {
     if (selectedUser) {
       fetchChat(selectedUser);
-      // Poll for new messages every 5 seconds
-      const interval = setInterval(() => fetchChat(selectedUser), 5000);
-      return () => clearInterval(interval);
+
+      const onMessageNew = (message: Message) => {
+        if (message.sender_id === selectedUser || message.receiver_id === selectedUser) {
+          setMessages(prev => {
+            if (prev.find(m => m.id === message.id)) return prev;
+            return [...prev, message];
+          });
+        }
+        fetchConversations();
+      };
+
+      const onMessageRead = (data: { messageId: string, readerId: string }) => {
+        setMessages(prev => prev.map(m =>
+          m.id === data.messageId ? { ...m, read_at: new Date().toISOString() } : m
+        ));
+      };
+
+      const onUserBlocked = (data: { by: string }) => {
+        if (data.by === selectedUser) {
+          setIsBlocked(true);
+        }
+      };
+
+      const onReconnect = () => {
+        fetchChat(selectedUser);
+        fetchConversations();
+      };
+
+      socket.on("message:new", onMessageNew);
+      socket.on("message:read", onMessageRead);
+      socket.on("user:blocked", onUserBlocked);
+      socket.on("connect", onReconnect);
+
+      return () => {
+        socket.off("message:new", onMessageNew);
+        socket.off("message:read", onMessageRead);
+        socket.off("user:blocked", onUserBlocked);
+        socket.off("connect", onReconnect);
+      };
     }
   }, [selectedUser]);
 

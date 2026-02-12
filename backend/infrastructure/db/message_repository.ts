@@ -134,9 +134,10 @@ export async function getChat(userId1: string, userId2: string): Promise<Message
     return res.rows;
 }
 
-export async function markMessagesAsRead(receiverId: string, senderId: string): Promise<void> {
-    await pool.query(
-        'UPDATE messages SET read_at = NOW() WHERE receiver_id = $1 AND sender_id = $2 AND read_at IS NULL',
+export async function markMessagesAsRead(receiverId: string, senderId: string): Promise<string[]> {
+    const res = await pool.query(
+        'UPDATE messages SET read_at = NOW() WHERE receiver_id = $1 AND sender_id = $2 AND read_at IS NULL RETURNING id',
         [receiverId, senderId]
     );
+    return res.rows.map(row => row.id);
 }

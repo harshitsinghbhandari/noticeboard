@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authMiddleware } from '../../infrastructure/http/auth_middleware';
 import { listConversations, getChat, markMessagesAsRead, sendMessage } from '../../infrastructure/db/message_repository';
+import { io } from '../server';
 
 const router = Router();
 
@@ -18,7 +19,15 @@ router.get('/:userId', authMiddleware, async (req, res) => {
     const userId = req.params.userId as string;
     try {
         const chat = await getChat(req.user!.id, userId);
-        await markMessagesAsRead(req.user!.id, userId);
+        const readMessageIds = await markMessagesAsRead(req.user!.id, userId);
+
+        readMessageIds.forEach(messageId => {
+            io.to(`user:${userId}`).emit("message:read", {
+                messageId,
+                readerId: req.user!.id
+            });
+        });
+
         res.json(chat);
     } catch (error) {
         console.error('Get chat error', error);
@@ -33,6 +42,9 @@ router.post('/', authMiddleware, async (req, res) => {
     }
     try {
         const message = await sendMessage(req.user!.id, receiver_id, message_text, attachment_url);
+
+        io.to(`user:${receiver_id}`).emit("message:new", message);
+
         res.status(201).json(message);
     } catch (error: any) {
         console.error('Send message error', error);
