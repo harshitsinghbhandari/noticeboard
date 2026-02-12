@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import Keycloak from 'keycloak-js';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { socket } from './utils/socket';
 import Feed from './components/Feed';
 import Notifications from './components/Notifications';
 import Layout from './components/Layout';
@@ -51,6 +52,10 @@ function AppContent() {
         setAuthenticated(auth);
         if (auth && keycloak.token) {
           localStorage.setItem('token', keycloak.token);
+
+          socket.auth = { token: keycloak.token };
+          socket.connect();
+
           if (keycloak.refreshToken) {
             localStorage.setItem('refreshToken', keycloak.refreshToken);
           }
@@ -61,6 +66,18 @@ function AppContent() {
       .finally(() => {
         setIsInitialized(true);
       });
+
+    keycloak.onTokenExpired = () => {
+      keycloak.updateToken(70).then((refreshed) => {
+        if (refreshed && keycloak.token) {
+          localStorage.setItem('token', keycloak.token);
+          socket.auth = { token: keycloak.token };
+          socket.connect();
+        }
+      }).catch(err => {
+        console.error('Failed to refresh token', err);
+      });
+    };
   }, []);
 
   const handleLoginSuccess = (token: string, refreshToken?: string) => {
