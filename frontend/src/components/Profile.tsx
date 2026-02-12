@@ -134,13 +134,72 @@ export default function Profile({ currentUserId }: ProfileProps) {
                                     {isEditing ? 'Cancel' : 'Edit Profile'}
                                 </button>
                             ) : (
-                                <button
-                                    onClick={() => navigate(`/messages/${targetUserId}`, { state: { user: profile } })}
-                                    className="bg-primary text-white px-6 py-2 rounded-lg font-semibold hover:bg-primary/90 transition-colors flex items-center gap-2"
-                                >
-                                    <span className="material-symbols-outlined text-lg">mail</span>
-                                    Message
-                                </button>
+                                <>
+                                    {!profile.is_blocked && profile.connection_status === 'accepted' && (
+                                        <button
+                                            onClick={() => navigate(`/messages/${targetUserId}`, { state: { user: profile } })}
+                                            className="bg-primary text-white px-6 py-2 rounded-lg font-semibold hover:bg-primary/90 transition-colors flex items-center gap-2"
+                                        >
+                                            <span className="material-symbols-outlined text-lg">mail</span>
+                                            Message
+                                        </button>
+                                    )}
+
+                                    {profile.is_blocked ? (
+                                        <button
+                                            onClick={async () => {
+                                                if (!confirm('Are you sure you want to unblock this user?')) return;
+                                                try {
+                                                    await apiClient.delete(`/users/${targetUserId}/block`);
+                                                    setProfile(prev => prev ? { ...prev, is_blocked: false } : null);
+                                                } catch (err) {
+                                                    console.error('Failed to unblock', err);
+                                                    alert('Failed to unblock user');
+                                                }
+                                            }}
+                                            className="bg-red-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-red-700 transition-colors flex items-center gap-2"
+                                        >
+                                            <span className="material-symbols-outlined text-lg">block</span>
+                                            Unblock
+                                        </button>
+                                    ) : (
+                                        <>
+                                            <button
+                                                onClick={async () => {
+                                                    if (!confirm('Are you sure you want to block this user? They will not be able to message or connect with you.')) return;
+                                                    try {
+                                                        await apiClient.post(`/users/${targetUserId}/block`);
+                                                        setProfile(prev => prev ? { ...prev, is_blocked: true, connection_status: null } : null);
+                                                    } catch (err) {
+                                                        console.error('Failed to block', err);
+                                                        alert('Failed to block user');
+                                                    }
+                                                }}
+                                                className="bg-red-100 text-red-600 px-4 py-2 rounded-lg font-semibold hover:bg-red-200 transition-colors flex items-center gap-2"
+                                                title="Block User"
+                                            >
+                                                <span className="material-symbols-outlined text-lg">block</span>
+                                            </button>
+                                            <button
+                                                onClick={async () => {
+                                                    const reason = prompt('Please provide a reason for reporting this user:');
+                                                    if (!reason) return;
+                                                    try {
+                                                        await apiClient.post(`/users/${targetUserId}/report`, { reason });
+                                                        alert('User reported successfully.');
+                                                    } catch (err) {
+                                                        console.error('Failed to report', err);
+                                                        alert('Failed to report user');
+                                                    }
+                                                }}
+                                                className="bg-gray-100 text-gray-600 px-4 py-2 rounded-lg font-semibold hover:bg-gray-200 transition-colors flex items-center gap-2"
+                                                title="Report User"
+                                            >
+                                                <span className="material-symbols-outlined text-lg">flag</span>
+                                            </button>
+                                        </>
+                                    )}
+                                </>
                             )}
                             <button className="bg-[#e8edf3] dark:bg-gray-800 p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
                                 <span className="material-symbols-outlined">share</span>

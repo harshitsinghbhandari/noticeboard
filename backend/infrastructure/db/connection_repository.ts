@@ -15,7 +15,29 @@ export interface Connection {
     receiver_headline?: string;
 }
 
+import { isBlocked } from './blocking_repository';
+
 export async function createRequest(requesterId: string, receiverId: string): Promise<string> {
+    // 1. Check Blocking
+    const blocked = await isBlocked(requesterId, receiverId);
+    if (blocked) {
+        throw new Error('Cannot connect due to blocking');
+    }
+
+    // 2. Check Rate Limit (20 per 24h)
+    const limitQuery = `
+        SELECT COUNT(*) 
+        FROM connections 
+        WHERE requester_id = $1 
+          AND created_at > NOW() - INTERVAL '24 hours'
+    `;
+    const limitRes = await pool.query(limitQuery, [requesterId]);
+    const recentRequests = parseInt(limitRes.rows[0].count, 10);
+
+    if (recentRequests >= 20) {
+        throw new Error('Rate limit exceeded: Cannot send more than 20 connection requests per day');
+    }
+
     const query = `
     INSERT INTO connections (requester_id, receiver_id, status)
     VALUES ($1, $2, 'pending')

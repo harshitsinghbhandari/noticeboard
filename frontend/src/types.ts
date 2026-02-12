@@ -33,6 +33,9 @@ export interface UserProfile {
     about?: string;
     headline?: string;
     is_system_admin: boolean;
+    connection_status?: 'pending' | 'accepted' | 'rejected' | null;
+    is_connection_sender?: boolean;
+    is_blocked?: boolean;
 }
 
 export interface Notification {

@@ -34,9 +34,17 @@ router.post('/', authMiddleware, async (req, res) => {
     try {
         const message = await sendMessage(req.user!.id, receiver_id, message_text, attachment_url);
         res.status(201).json(message);
-    } catch (error) {
+    } catch (error: any) {
         console.error('Send message error', error);
-        res.status(500).json({ error: 'Internal server error' });
+        if (error.message.includes('blocking')) {
+            res.status(403).json({ error: error.message });
+        } else if (error.message.includes('accepted connection')) {
+            res.status(403).json({ error: error.message });
+        } else if (error.message.includes('Rate limit')) {
+            res.status(429).json({ error: error.message });
+        } else {
+            res.status(500).json({ error: 'Internal server error' });
+        }
     }
 });
 

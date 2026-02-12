@@ -14,10 +14,28 @@ export default function Messages() {
   const [loading, setLoading] = useState(true);
   const [newChatId, setNewChatId] = useState('');
   const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const [isBlocked, setIsBlocked] = useState(false);
+
+  // Close menu when clicking outside (simple version: just close on selection change)
+  useEffect(() => {
+    setIsMenuOpen(false);
+    if (selectedUser) {
+      apiClient.get(`/users/${selectedUser}`)
+        .then(res => setIsBlocked(!!res.data.is_blocked))
+        .catch(err => console.error("Failed to check block status", err));
+    } else {
+      setIsBlocked(false);
+    }
+  }, [selectedUser]);
 
   useEffect(() => {
     fetchConversations();
   }, []);
+  // ... (existing code)
+  // ...
+
 
   useEffect(() => {
     if (userId) {
@@ -48,6 +66,58 @@ export default function Messages() {
       return () => clearInterval(interval);
     }
   }, [selectedUser]);
+
+  const handleBlockUser = async () => {
+    if (!selectedUser) return;
+    if (!confirm('Are you sure you want to block this user? They will not be able to message you.')) return;
+
+    try {
+      await apiClient.post(`/users/${selectedUser}/block`);
+      alert('User blocked successfully.');
+      // Ideally, refresh or redirect. For now, clear selection.
+      setSelectedUser(null);
+      fetchConversations();
+    } catch (err) {
+      console.error('Failed to block user', err);
+      alert('Failed to block user.');
+    }
+    setIsMenuOpen(false);
+  };
+
+  const handleReportUser = async () => {
+    if (!selectedUser) return;
+    const reason = prompt('Please provide a reason for reporting this user:');
+    if (!reason) return;
+
+    try {
+      await apiClient.post(`/users/${selectedUser}/report`, { reason });
+      alert('User reported successfully.');
+    } catch (err: any) {
+      console.error('Failed to report user', err);
+      if (err.response?.data?.error) {
+        alert(`Error: ${err.response.data.error}`);
+      } else {
+        alert('Failed to report user.');
+      }
+    }
+    setIsMenuOpen(false);
+  };
+
+  const handleUnblockUser = async () => {
+    if (!selectedUser) return;
+    if (!confirm('Are you sure you want to unblock this user?')) return;
+
+    try {
+      await apiClient.delete(`/users/${selectedUser}/block`);
+      alert('User unblocked successfully.');
+      setIsBlocked(false);
+      fetchConversations();
+    } catch (err) {
+      console.error('Failed to unblock user', err);
+      alert('Failed to unblock user.');
+    }
+    setIsMenuOpen(false);
+  };
 
   const fetchConversations = async () => {
     try {
@@ -105,8 +175,13 @@ export default function Messages() {
       fetchChat(selectedUser);
       // Refresh conversations to show the new message snippet
       fetchConversations();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to send message', err);
+      if (err.response?.data?.error) {
+        alert(`Error: ${err.response.data.error}`);
+      } else {
+        alert('Failed to send message');
+      }
     }
   };
 
@@ -168,16 +243,57 @@ export default function Messages() {
       </div>
 
       {/* Chat Area */}
-      <div className="flex-1 bg-white rounded-lg shadow border border-gray-200 flex flex-col w-full">
+      <div className="flex-1 bg-white rounded-lg shadow border border-gray-200 flex flex-col w-full relative">
         {selectedUser ? (
           <>
-            <div className="p-4 border-b flex items-center gap-2">
-              <button className="md:hidden mr-2" onClick={() => setSelectedUser(null)}>
-                <span className="material-symbols-outlined">arrow_back</span>
-              </button>
-              <h2 className="text-xl font-bold text-black">
-                {conversations.find(c => c.other_id === selectedUser)?.first_name || 'Chat'} {conversations.find(c => c.other_id === selectedUser)?.last_name}
-              </h2>
+            <div className="p-4 border-b flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <button className="md:hidden mr-2" onClick={() => setSelectedUser(null)}>
+                  <span className="material-symbols-outlined">arrow_back</span>
+                </button>
+                <h2 className="text-xl font-bold text-black">
+                  {conversations.find(c => c.other_id === selectedUser)?.first_name || 'Chat'} {conversations.find(c => c.other_id === selectedUser)?.last_name}
+                </h2>
+              </div>
+
+              <div className="relative">
+                <button
+                  onClick={() => setIsMenuOpen(!isMenuOpen)}
+                  className="p-2 hover:bg-gray-100 rounded-full text-gray-600"
+                >
+                  <span className="material-symbols-outlined">more_vert</span>
+                </button>
+
+                {isMenuOpen && (
+
+                  <div className="absolute right-0 top-full mt-1 w-48 bg-white border rounded shadow-lg z-20 overflow-hidden">
+                    {isBlocked ? (
+                      <button
+                        onClick={handleUnblockUser}
+                        className="w-full text-left px-4 py-2 hover:bg-gray-50 text-black flex items-center gap-2"
+                      >
+                        <span className="material-symbols-outlined text-sm">check_circle</span>
+                        Unblock User
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleBlockUser}
+                        className="w-full text-left px-4 py-2 hover:bg-gray-50 text-red-600 flex items-center gap-2"
+                      >
+                        <span className="material-symbols-outlined text-sm">block</span>
+                        Block User
+                      </button>
+                    )}
+                    <button
+                      onClick={handleReportUser}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-50 text-gray-700 flex items-center gap-2"
+                    >
+                      <span className="material-symbols-outlined text-sm">flag</span>
+                      Report User
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {messages.length === 0 ? (
@@ -204,12 +320,19 @@ export default function Messages() {
             <form onSubmit={handleSendMessage} className="p-4 border-t flex gap-2">
               <input
                 type="text"
-                placeholder="Type a message..."
-                className="flex-1 border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+                placeholder={isBlocked ? "You cannot message this user" : "Type a message..."}
+                className="flex-1 border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-black disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
+                disabled={isBlocked}
               />
-              <Button type="submit">Send</Button>
+              <Button
+                type="submit"
+                disabled={isBlocked || !newMessage.trim()}
+                className={isBlocked ? "!bg-gray-400 !hover:bg-gray-400 cursor-not-allowed text-white" : ""}
+              >
+                Send
+              </Button>
             </form>
           </>
         ) : (

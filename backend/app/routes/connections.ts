@@ -24,6 +24,10 @@ router.post('/request', authMiddleware, async (req, res) => {
         console.error('Create request error', error);
         if (error.message.includes('already exists')) {
             res.status(409).json({ error: error.message });
+        } else if (error.message.includes('blocking')) {
+            res.status(403).json({ error: error.message });
+        } else if (error.message.includes('Rate limit')) {
+            res.status(429).json({ error: error.message });
         } else {
             res.status(500).json({ error: 'Internal server error' });
         }
