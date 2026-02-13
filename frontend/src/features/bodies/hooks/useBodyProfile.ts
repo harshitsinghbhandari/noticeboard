@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import * as bodiesApi from '../api/bodies';
 import { useApi } from '../../../hooks/useApi';
+import type { BodyRole } from '../../../types';
 
 export const useBodyProfile = (id: string | undefined) => {
     const {
@@ -76,7 +77,7 @@ export const useBodyProfile = (id: string | undefined) => {
     const { execute: executeRemoveMember } = useApi(bodiesApi.removeBodyMember);
     const { execute: executeUpdateRole } = useApi(bodiesApi.updateBodyMember);
 
-    const handleAddMember = async (userId: string, role: any) => {
+    const handleAddMember = async (userId: string, role: BodyRole) => {
         if (!id) return;
         await executeAddMember(id, { user_id: userId, role });
         await executeFetchMembers(id);
@@ -88,7 +89,7 @@ export const useBodyProfile = (id: string | undefined) => {
         setMembers(prev => (prev || []).filter(m => m.user_id !== userId));
     };
 
-    const handleChangeRole = async (userId: string, role: any) => {
+    const handleChangeRole = async (userId: string, role: BodyRole) => {
         if (!id) return;
         await executeUpdateRole(id, userId, role);
         setMembers(prev => (prev || []).map(m => m.user_id === userId ? { ...m, role } : m));

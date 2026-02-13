@@ -9,6 +9,6 @@ export const getOpenings = (filters: { job_type?: string; experience_level?: str
     return apiClient.get<Opening[]>(url);
 };
 
-export const createOpening = (data: any) => apiClient.post<Opening>('/openings', data);
-export const updateOpening = (id: string, data: any) => apiClient.put<Opening>(`/openings/${id}`, data);
+export const createOpening = (data: Partial<Opening>) => apiClient.post<Opening>('/openings', data);
+export const updateOpening = (id: string, data: Partial<Opening>) => apiClient.put<Opening>(`/openings/${id}`, data);
 export const deleteOpening = (id: string) => apiClient.delete(`/openings/${id}`);

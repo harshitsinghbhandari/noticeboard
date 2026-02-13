@@ -17,6 +17,7 @@ export interface Event {
     created_at: Date;
     updated_at: Date;
     cancelled_at?: Date;
+    body_name?: string;
 }
 
 export interface EventWithDistance extends Event {
@@ -72,20 +73,21 @@ export async function createEvent(userId: string, data: any): Promise<Event> {
 
 export async function listEvents(lat: number, lng: number, radius: number): Promise<EventWithDistance[]> {
     const query = `
-        SELECT *, (
+        SELECT e.*, b.name as body_name, (
             6371 * acos(
-                cos(radians($1)) * cos(radians(latitude)) *
-                cos(radians(longitude) - radians($2)) +
-                sin(radians($1)) * sin(radians(latitude))
+                cos(radians($1)) * cos(radians(e.latitude)) *
+                cos(radians(e.longitude) - radians($2)) +
+                sin(radians($1)) * sin(radians(e.latitude))
             )
         ) AS distance
-        FROM events
-        WHERE status = 'published'
+        FROM events e
+        LEFT JOIN bodies b ON e.body_id = b.id
+        WHERE e.status = 'published'
         AND (
             6371 * acos(
-                cos(radians($1)) * cos(radians(latitude)) *
-                cos(radians(longitude) - radians($2)) +
-                sin(radians($1)) * sin(radians(latitude))
+                cos(radians($1)) * cos(radians(e.latitude)) *
+                cos(radians(e.longitude) - radians($2)) +
+                sin(radians($1)) * sin(radians(e.latitude))
             )
         ) <= $3
         ORDER BY distance ASC
@@ -129,12 +131,18 @@ export async function isOrganizer(groupId: string, userId: string): Promise<bool
 }
 
 export async function getEvent(eventId: string): Promise<Event | null> {
-    const res = await pool.query('SELECT * FROM events WHERE id = $1', [eventId]);
+    const res = await pool.query(
+        'SELECT e.*, b.name as body_name FROM events e LEFT JOIN bodies b ON e.body_id = b.id WHERE e.id = $1',
+        [eventId]
+    );
     return res.rows[0] || null;
 }
 
 export async function getEventByGroupId(groupId: string): Promise<Event | null> {
-    const res = await pool.query('SELECT * FROM events WHERE group_id = $1', [groupId]);
+    const res = await pool.query(
+        'SELECT e.*, b.name as body_name FROM events e LEFT JOIN bodies b ON e.body_id = b.id WHERE e.group_id = $1',
+        [groupId]
+    );
     return res.rows[0] || null;
 }
 

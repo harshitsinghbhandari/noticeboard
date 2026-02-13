@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useState } from 'react';
 import * as messagesApi from '../api/messages';
-import { useUnread } from '../../../context/UnreadContext';
+import { useUnread } from '../../../hooks/useUnread';
 import { socket } from '../../../utils/socket';
 import { useApi } from '../../../hooks/useApi';
 import type { Message, GroupMessage } from '../../../types';
@@ -15,7 +15,8 @@ export const useChat = (chatId: string | null, chatType: 'user' | 'group' | null
         execute: executeFetchMessages,
         setData: setMessages
     } = useApi< (Message | GroupMessage)[], [string] >(
-        chatType === 'user' ? messagesApi.getUserChat as any : messagesApi.getGroupChat as any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        chatType === 'user' ? (messagesApi.getUserChat as any) : (messagesApi.getGroupChat as any)
     );
 
     const fetchMessages = useCallback(async () => {
@@ -35,6 +36,7 @@ export const useChat = (chatId: string | null, chatType: 'user' | 'group' | null
     }, [chatId, chatType, clearUnread, executeFetchMessages]);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         void fetchMessages();
     }, [fetchMessages]);
 
@@ -69,7 +71,10 @@ export const useChat = (chatId: string | null, chatType: 'user' | 'group' | null
         };
     }, [chatId, chatType, setMessages]);
 
-    const { execute: executeSendMessage } = useApi(chatType === 'user' ? messagesApi.sendMessage : messagesApi.sendGroupMessage as any);
+    const { execute: executeSendMessage } = useApi(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        chatType === 'user' ? messagesApi.sendMessage : (messagesApi.sendGroupMessage as any)
+    );
 
     const sendMessage = async (text: string) => {
         if (!chatId || !chatType || !text.trim()) return;

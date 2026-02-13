@@ -60,7 +60,7 @@ export default function EventDiscovery() {
                                 <span className="material-symbols-outlined !text-[12px]">sensors</span> Starting Now
                             </div>
                             <div className="absolute bottom-3 left-3 z-20">
-                                <p className="text-xs text-primary font-bold uppercase mb-0.5">{event.location_name}</p>
+                                <p className="text-xs text-primary font-bold uppercase mb-0.5">{event.body_name || event.location_name}</p>
                                 <h3 className="font-bold text-white text-base leading-tight">{event.title}</h3>
                                 <p className="text-[11px] text-slate-300">Today {new Date(event.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                             </div>
@@ -91,7 +91,7 @@ export default function EventDiscovery() {
                             </div>
                             <div className="flex flex-col justify-between py-1">
                                 <div>
-                                    <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded uppercase">Featured</span>
+                                    <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded uppercase">{event.body_name || 'Featured'}</span>
                                     <h3 className="font-bold text-white mt-1">{event.title}</h3>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -125,6 +125,7 @@ export default function EventDiscovery() {
                             <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
                                 <div className="space-y-2">
                                     <div className="flex items-center gap-4 text-xs font-semibold text-slate-400">
+                                        <span className="text-primary">{event.body_name}</span>
                                         <span className="flex items-center gap-1"><span className="material-symbols-outlined !text-sm">calendar_today</span> {new Date(event.start_time).toLocaleDateString()}</span>
                                         <span className="flex items-center gap-1"><span className="material-symbols-outlined !text-sm">location_on</span> {event.location_name}</span>
                                     </div>

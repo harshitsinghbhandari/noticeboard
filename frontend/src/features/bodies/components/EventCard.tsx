@@ -18,8 +18,9 @@ export default function EventCard({ event, onJoin }: EventCardProps) {
         try {
             await apiClient.post(`/events/${event.id}/join`);
             onJoin();
-        } catch (error: any) {
-            alert(error.response?.data?.error || 'Failed to join event');
+        } catch (error) {
+            const axiosError = error as { response?: { data?: { error?: string } } };
+            alert(axiosError.response?.data?.error || 'Failed to join event');
         } finally {
             setLoading(false);
         }

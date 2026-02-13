@@ -82,9 +82,10 @@ export default function CreateGroupModal({ isOpen, onClose, onGroupCreated, init
             setName('');
             setDescription('');
             setSelectedMembers([]);
-        } catch (err: any) {
+        } catch (err) {
             console.error('Failed to create group', err);
-            setError(err.response?.data?.error || 'Failed to create group');
+            const axiosError = err as { response?: { data?: { error?: string } } };
+            setError(axiosError.response?.data?.error || 'Failed to create group');
         } finally {
             setLoading(false);
         }

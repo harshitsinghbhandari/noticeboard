@@ -44,7 +44,7 @@ export const usePostActions = (onPostAdded?: (post: FeedItem) => void) => {
             } else {
                 await executeLike(postId);
             }
-        } catch (err) {
+        } catch {
             updateLocalState(currentHasLiked);
         }
     };

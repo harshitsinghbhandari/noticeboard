@@ -183,4 +183,5 @@ export interface Event {
     created_at: string;
     updated_at: string;
     cancelled_at?: string;
+    body_name?: string;
 }

@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useMemo } from 'react';
 import * as messagesApi from '../api/messages';
 import { useApi } from '../../../hooks/useApi';
-import { useUnread } from '../../../context/UnreadContext';
+import { useUnread } from '../../../hooks/useUnread';
 
 export const useConversations = () => {
     const { unreadBySender } = useUnread();

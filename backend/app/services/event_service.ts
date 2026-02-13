@@ -61,6 +61,14 @@ export class EventService {
         await eventRepo.cancelEvent(eventId);
     }
 
+    static async getEvent(eventId: string) {
+        return await eventRepo.getEvent(eventId);
+    }
+
+    static async getEventByGroupId(groupId: string) {
+        return await eventRepo.getEventByGroupId(groupId);
+    }
+
     static async listEvents(lat: number, lng: number, radius: number) {
         return await eventRepo.listEvents(lat, lng, radius);
     }

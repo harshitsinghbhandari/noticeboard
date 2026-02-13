@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { useParams } from 'react-router-dom';
-import type { Group, GroupMessage, Message } from '../../../types';
+import { useState, useEffect, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import type { Group, GroupMessage, Message, Event } from '../../../types';
 import { useConversations } from '../hooks/useConversations';
 import { useChat } from '../hooks/useChat';
 import apiClient from '../../../api/client';
@@ -14,12 +14,22 @@ interface MessagesProps {
 
 export default function Messages({ currentUserId }: MessagesProps) {
     const { type: urlType, id: urlId } = useParams();
+    const navigate = useNavigate();
     const { conversations, groups, fetchData: refreshConversations } = useConversations();
 
     const [chatView, setChatView] = useState<ChatView>(urlType === 'group' ? 'groups' : 'dms');
     const [selectedChat, setSelectedChat] = useState<{ id: string, type: 'user' | 'group' } | null>(
         urlId && (urlType === 'user' || urlType === 'group') ? { id: urlId, type: urlType as 'user' | 'group' } : null
     );
+
+    useEffect(() => {
+        if (urlId && (urlType === 'user' || urlType === 'group')) {
+            setTimeout(() => {
+                setSelectedChat({ id: urlId, type: urlType as 'user' | 'group' });
+                setChatView(urlType === 'group' ? 'groups' : 'dms');
+            }, 0);
+        }
+    }, [urlId, urlType]);
 
     const {
         messages,
@@ -31,6 +41,25 @@ export default function Messages({ currentUserId }: MessagesProps) {
     const [newMessage, setNewMessage] = useState('');
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
+    const [activeEvent, setActiveEvent] = useState<Event | null>(null);
+
+    const fetchActiveEvent = useCallback(async (groupId: string) => {
+        try {
+            const res = await apiClient.get(`/events/group/${groupId}`);
+            setActiveEvent(res.data);
+        } catch {
+            setActiveEvent(null);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (selectedChat?.type === 'group') {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            void fetchActiveEvent(selectedChat.id);
+        } else {
+            setActiveEvent(null);
+        }
+    }, [selectedChat, fetchActiveEvent]);
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -50,7 +79,7 @@ export default function Messages({ currentUserId }: MessagesProps) {
             await apiClient.post(`/users/${selectedChat.id}/block`);
             setIsBlocked(true);
             setIsMenuOpen(false);
-        } catch (e) { alert('Failed'); }
+        } catch { alert('Failed'); }
     };
 
     const handleUnblockUser = async () => {
@@ -59,7 +88,7 @@ export default function Messages({ currentUserId }: MessagesProps) {
             await apiClient.delete(`/users/${selectedChat.id}/block`);
             setIsBlocked(false);
             setIsMenuOpen(false);
-        } catch (e) { alert('Failed'); }
+        } catch { alert('Failed'); }
     };
 
     const handleReportUser = async () => {
@@ -70,7 +99,7 @@ export default function Messages({ currentUserId }: MessagesProps) {
                 await apiClient.post(`/users/${selectedChat.id}/report`, { reason });
                 alert('Reported');
                 setIsMenuOpen(false);
-            } catch (e) { alert('Failed'); }
+            } catch { alert('Failed'); }
         }
     };
 
@@ -214,11 +243,20 @@ export default function Messages({ currentUserId }: MessagesProps) {
                                     </h2>
                                     <p className="text-[10px] text-primary font-bold flex items-center gap-1">
                                         <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                                        Active Now
+                                        {activeEvent ? 'Event Group' : 'Active Now'}
                                     </p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
+                                {activeEvent && (
+                                    <button
+                                        onClick={() => navigate(`/events/${activeEvent.id}`)}
+                                        className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary text-xs font-bold rounded-lg hover:bg-primary/20 transition-all border border-primary/20"
+                                    >
+                                        <span className="material-symbols-outlined text-sm">event</span>
+                                        View Event
+                                    </button>
+                                )}
                                 <button className="p-2 text-slate-400 hover:text-primary transition-colors">
                                     <span className="material-symbols-outlined">videocam</span>
                                 </button>
