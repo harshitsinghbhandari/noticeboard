@@ -8,6 +8,7 @@ import bodyRoutes from './bodies';
 import openingRoutes from './openings';
 import messageRoutes from './messages';
 import groupRoutes from './groups';
+import eventRoutes from './events';
 
 const router = Router();
 
@@ -19,6 +20,7 @@ router.use('/notifications', notificationRoutes);
 router.use('/bodies', bodyRoutes);
 router.use('/openings', openingRoutes);
 router.use('/messages', messageRoutes); // 1:1 messages
+router.use('/events', eventRoutes);
 router.use('/', groupRoutes); // Group routes are mixed /groups... and /groups/...
 
 

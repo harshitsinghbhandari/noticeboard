@@ -4,10 +4,12 @@ import {
     leaveGroup,
     saveGroupMessage,
     markGroupRead,
+    getGroup,
     getUserGroups,
     getGroupMessages,
     getGroupUnreadSummary
 } from '../../infrastructure/db/group_repository';
+import { getEventByGroupId, isOrganizer } from '../../infrastructure/db/event_repository';
 import { io } from '../server';
 
 export class GroupService {
@@ -84,11 +86,31 @@ export class GroupService {
     static async sendMessage(userId: string, groupId: string, content: string) {
         if (!content) throw new Error('Content is required');
 
+        const group = await getGroup(groupId);
+        if (!group) throw new Error('Group not found');
+
+        let isOrganizerFlag = false;
+
+        if (group.type === 'event') {
+            const event = await getEventByGroupId(groupId);
+            if (event) {
+                if (event.status === 'cancelled') {
+                    const cancelledAt = new Date(event.cancelled_at || event.updated_at);
+                    const now = new Date();
+                    if (now.getTime() > cancelledAt.getTime() + 24 * 60 * 60 * 1000) {
+                        throw new Error('Messaging is blocked for this cancelled event after 24 hours');
+                    }
+                }
+                isOrganizerFlag = await isOrganizer(groupId, userId);
+            }
+        }
+
         const message = await saveGroupMessage(groupId, userId, content);
+        const messageWithFlag = { ...message, isOrganizer: isOrganizerFlag };
 
-        io.to(`group:${groupId}`).emit('group:message:new', message);
+        io.to(`group:${groupId}`).emit('group:message:new', messageWithFlag);
 
-        return message;
+        return messageWithFlag;
     }
 
     static async listMessages(userId: string, groupId: string) {

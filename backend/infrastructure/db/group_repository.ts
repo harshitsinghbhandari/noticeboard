@@ -36,6 +36,7 @@ export interface GroupMessage {
     created_at: Date;
     sender_first_name?: string;
     sender_last_name?: string;
+    is_organizer?: boolean;
 }
 
 export interface CreateGroupParams {
@@ -322,14 +323,35 @@ export async function getGroupMessages(groupId: string, userId: string, limit = 
         throw new Error("Not a member");
     }
 
-    const query = `
-        SELECT m.*, u.first_name as sender_first_name, u.last_name as sender_last_name
-        FROM group_messages m
-        JOIN users u ON m.sender_id = u.id
-        WHERE m.group_id = $1
-        ORDER BY m.created_at ASC
-        LIMIT $2 OFFSET $3
-    `;
+    const groupRes = await pool.query('SELECT type FROM groups WHERE id = $1', [groupId]);
+    const groupType = groupRes.rows[0]?.type;
+
+    let query: string;
+    if (groupType === 'event') {
+        query = `
+            SELECT m.*, u.first_name as sender_first_name, u.last_name as sender_last_name,
+            (
+                EXISTS (SELECT 1 FROM event_admins ea JOIN events e ON ea.event_id = e.id WHERE e.group_id = $1 AND ea.user_id = m.sender_id)
+                OR
+                EXISTS (SELECT 1 FROM event_organizers eo JOIN events e ON eo.event_id = e.id WHERE e.group_id = $1 AND eo.user_id = m.sender_id)
+            ) as is_organizer
+            FROM group_messages m
+            JOIN users u ON m.sender_id = u.id
+            WHERE m.group_id = $1
+            ORDER BY m.created_at ASC
+            LIMIT $2 OFFSET $3
+        `;
+    } else {
+        query = `
+            SELECT m.*, u.first_name as sender_first_name, u.last_name as sender_last_name,
+            false as is_organizer
+            FROM group_messages m
+            JOIN users u ON m.sender_id = u.id
+            WHERE m.group_id = $1
+            ORDER BY m.created_at ASC
+            LIMIT $2 OFFSET $3
+        `;
+    }
     const res = await pool.query(query, [groupId, limit, offset]);
     return res.rows;
 }
