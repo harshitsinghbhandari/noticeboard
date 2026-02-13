@@ -1,45 +1,31 @@
 import { Router } from 'express';
 import { authMiddleware } from '../../infrastructure/http/auth_middleware';
-import { createPost, getAggregatedFeed, getPost, addComment, listComments, addReaction, removeReaction } from '../../infrastructure/db/post_repository';
-import { checkBodyPermission, BodyAction } from '../../infrastructure/db/body_repository';
-import { createNotification } from '../../infrastructure/db/notification_repository';
+import { PostService } from '../services/post_service';
 
 const router = Router();
 
 router.post('/', authMiddleware, async (req, res) => {
-    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
-    const { content, visibility, body_id } = req.body;
-
-    if (!content || typeof content !== 'string') {
-        return res.status(400).json({ error: 'Content is required' });
-    }
-
-    if (body_id) {
-        const hasPermission = await checkBodyPermission(req.user.id, body_id, BodyAction.CREATE_POST);
-        if (!hasPermission) {
-            return res.status(403).json({ error: 'Forbidden: You are not authorized to post for this body' });
-        }
-    }
-
-    const validVisibility = ['public', 'connections_only'];
-    const postVisibility = (visibility && validVisibility.includes(visibility)) ? visibility : 'public';
-
     try {
-        const post = await createPost(req.user.id, content, postVisibility, body_id);
+        const post = await PostService.createPost(req.user!.id, req.body);
         res.status(201).json(post);
-    } catch (error) {
+    } catch (error: any) {
         console.error('Create post error', error);
-        res.status(500).json({ error: 'Internal server error' });
+        if (error.message.startsWith('Forbidden')) {
+            res.status(403).json({ error: error.message });
+        } else if (error.message === 'Content is required') {
+            res.status(400).json({ error: error.message });
+        } else {
+            res.status(500).json({ error: 'Internal server error' });
+        }
     }
 });
 
 router.get('/', authMiddleware, async (req, res) => {
-    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
     const limit = req.query.limit ? parseInt(req.query.limit as any) : 20;
     const cursor = req.query.cursor as any;
 
     try {
-        const feed = await getAggregatedFeed(req.user.id, limit, cursor);
+        const feed = await PostService.getFeed(req.user!.id, limit, cursor);
         res.json(feed);
     } catch (error) {
         console.error('List posts error', error);
@@ -48,15 +34,8 @@ router.get('/', authMiddleware, async (req, res) => {
 });
 
 router.get('/:id', authMiddleware, async (req, res) => {
-    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
-    const { id } = req.params;
-
-    if (typeof id !== 'string') {
-        return res.status(400).json({ error: 'Invalid ID' });
-    }
-
     try {
-        const post = await getPost(id);
+        const post = await PostService.getPost(req.params.id);
         if (!post) return res.status(404).json({ error: 'Post not found' });
         res.json(post);
     } catch (error) {
@@ -66,44 +45,22 @@ router.get('/:id', authMiddleware, async (req, res) => {
 });
 
 router.post('/:id/comments', authMiddleware, async (req, res) => {
-    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
-    const { id } = req.params;
-    const { content } = req.body;
-
-    if (typeof id !== 'string') {
-        return res.status(400).json({ error: 'Invalid ID' });
-    }
-
-    if (!content || typeof content !== 'string') {
-        return res.status(400).json({ error: 'Content is required' });
-    }
-
     try {
-        const comment = await addComment(id, req.user.id, content);
-
-        // Notify post author
-        const post = await getPost(id);
-        if (post && post.author_id !== req.user.id) {
-            await createNotification(post.author_id, 'comment', req.user.id, id);
-        }
-
+        const comment = await PostService.addComment(req.user!.id, req.params.id, req.body.content);
         res.status(201).json(comment);
-    } catch (error) {
+    } catch (error: any) {
         console.error('Add comment error', error);
-        res.status(500).json({ error: 'Internal server error' });
+        if (error.message === 'Content is required') {
+            res.status(400).json({ error: error.message });
+        } else {
+            res.status(500).json({ error: 'Internal server error' });
+        }
     }
 });
 
 router.get('/:id/comments', authMiddleware, async (req, res) => {
-    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
-    const { id } = req.params;
-
-    if (typeof id !== 'string') {
-        return res.status(400).json({ error: 'Invalid ID' });
-    }
-
     try {
-        const comments = await listComments(id);
+        const comments = await PostService.listComments(req.params.id);
         res.json(comments);
     } catch (error) {
         console.error('List comments error', error);
@@ -112,22 +69,8 @@ router.get('/:id/comments', authMiddleware, async (req, res) => {
 });
 
 router.post('/:id/like', authMiddleware, async (req, res) => {
-    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
-    const { id } = req.params;
-
-    if (typeof id !== 'string') {
-        return res.status(400).json({ error: 'Invalid ID' });
-    }
-
     try {
-        await addReaction(id, req.user.id);
-
-        // Notify post author
-        const post = await getPost(id);
-        if (post && post.author_id !== req.user.id) {
-            await createNotification(post.author_id, 'like', req.user.id, id);
-        }
-
+        await PostService.likePost(req.user!.id, req.params.id);
         res.json({ status: 'liked' });
     } catch (error) {
         console.error('Like error', error);
@@ -136,15 +79,8 @@ router.post('/:id/like', authMiddleware, async (req, res) => {
 });
 
 router.delete('/:id/like', authMiddleware, async (req, res) => {
-    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
-    const { id } = req.params;
-
-    if (typeof id !== 'string') {
-        return res.status(400).json({ error: 'Invalid ID' });
-    }
-
     try {
-        await removeReaction(id, req.user.id);
+        await PostService.unlikePost(req.user!.id, req.params.id);
         res.json({ status: 'unliked' });
     } catch (error) {
         console.error('Unlike error', error);

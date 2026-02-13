@@ -12,6 +12,22 @@ export interface Message {
     sender_last_name?: string;
 }
 
+export interface Conversation {
+    other_id: string;
+    first_name: string;
+    last_name: string;
+    message_text: string;
+    created_at: string;
+}
+
+export interface UnreadSummary {
+    totalUnread: number;
+    conversations: {
+        userId: string;
+        unreadCount: number;
+    }[];
+}
+
 import { isBlocked } from './blocking_repository';
 
 export async function sendMessage(senderId: string, receiverId: string, text: string, attachmentUrl?: string): Promise<Message> {
@@ -107,7 +123,7 @@ export async function sendMessage(senderId: string, receiverId: string, text: st
     return res.rows[0];
 }
 
-export async function listConversations(userId: string) {
+export async function listConversations(userId: string): Promise<Conversation[]> {
     const res = await pool.query(
         `SELECT DISTINCT ON (other_id)
             CASE WHEN sender_id = $1 THEN receiver_id ELSE sender_id END as other_id,
@@ -119,7 +135,7 @@ export async function listConversations(userId: string) {
          ORDER BY other_id, m.created_at DESC`,
         [userId]
     );
-    return res.rows;
+    return res.rows as Conversation[];
 }
 
 export async function getChat(userId1: string, userId2: string): Promise<Message[]> {
@@ -142,7 +158,7 @@ export async function markMessagesAsRead(receiverId: string, senderId: string): 
     return res.rows.map(row => row.id);
 }
 
-export async function getUnreadSummary(userId: string) {
+export async function getUnreadSummary(userId: string): Promise<UnreadSummary> {
     const res = await pool.query(
         `SELECT
             sender_id,

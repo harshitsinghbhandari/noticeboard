@@ -49,7 +49,7 @@ export async function upsertUser(user: AuthUser): Promise<void> {
     }
 }
 
-export interface UserRow {
+export interface User {
     id: string;
     email: string;
     first_name: string;
@@ -57,10 +57,10 @@ export interface UserRow {
     headline: string | null;
     created_at: Date;
     updated_at: Date;
-    is_system_admin: boolean; // Added field
+    is_system_admin: boolean;
 }
 
-export async function getUser(id: string): Promise<UserRow | null> {
+export async function getUser(id: string): Promise<User | null> {
     const query = 'SELECT * FROM users WHERE id = $1';
     const result = await pool.query(query, [id]);
 
@@ -68,15 +68,15 @@ export async function getUser(id: string): Promise<UserRow | null> {
         return null;
     }
 
-    return result.rows[0] as UserRow;
+    return result.rows[0] as User;
 }
 
-export async function searchUsers(queryStr: string): Promise<UserRow[]> {
+export async function searchUsers(queryStr: string): Promise<User[]> {
     const query = `
         SELECT * FROM users 
         WHERE email ILIKE $1 OR first_name ILIKE $1 OR last_name ILIKE $1
         LIMIT 10
     `;
     const result = await pool.query(query, [`%${queryStr}%`]);
-    return result.rows as UserRow[];
+    return result.rows as User[];
 }

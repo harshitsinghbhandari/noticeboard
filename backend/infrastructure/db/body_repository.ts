@@ -16,6 +16,12 @@ export interface BodyMembership {
     role: 'BODY_ADMIN' | 'BODY_MANAGER' | 'BODY_MEMBER';
 }
 
+export interface BodyMemberWithUser extends BodyMembership {
+    first_name: string;
+    last_name: string;
+    email: string;
+}
+
 export enum BodyAction {
     CREATE_POST = 'CREATE_POST',
     CREATE_EVENT = 'CREATE_EVENT',
@@ -126,7 +132,7 @@ export async function removeMember(bodyId: string, userId: string): Promise<void
     );
 }
 
-export async function listMembers(bodyId: string) {
+export async function listMembers(bodyId: string): Promise<BodyMemberWithUser[]> {
     const res = await pool.query(
         `SELECT m.*, u.first_name, u.last_name, u.email
          FROM body_memberships m
@@ -134,7 +140,7 @@ export async function listMembers(bodyId: string) {
          WHERE m.body_id = $1`,
         [bodyId]
     );
-    return res.rows;
+    return res.rows as BodyMemberWithUser[];
 }
 
 export async function countAdmins(bodyId: string): Promise<number> {

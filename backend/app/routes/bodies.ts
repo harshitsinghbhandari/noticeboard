@@ -1,25 +1,6 @@
 import { Router } from 'express';
 import { authMiddleware } from '../../infrastructure/http/auth_middleware';
-import {
-    listBodies,
-    listFollowedBodies,
-    getBody,
-    updateBody,
-    deleteBody,
-    isFollowingBody,
-    followBody,
-    unfollowBody,
-    listMembers,
-    addMember,
-    removeMember,
-    getMemberRole,
-    countAdmins,
-    checkBodyPermission,
-    createBodyWithAdmin,
-    BodyAction
-} from '../../infrastructure/db/body_repository';
-import { getUser } from '../../infrastructure/db/user_repository';
-import { listPosts } from '../../infrastructure/db/post_repository';
+import { BodyService } from '../services/body_service';
 import { body, validationResult } from 'express-validator';
 
 const router = Router();
@@ -28,39 +9,31 @@ const router = Router();
 router.post('/',
     authMiddleware,
     body('name').notEmpty().withMessage('Name is required'),
-    body('initial_admin_id').notEmpty().withMessage('Initial admin ID is required'),
+    body('initial_admin_id').notEmpty().withMessage('Initial admin is required'),
     async (req, res) => {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             return res.status(400).json({ errors: errors.array() });
         }
-
         try {
-            const user = await getUser(req.user!.id);
-            if (!user || !user.is_system_admin) {
-                return res.status(403).json({ error: 'Forbidden: Only System Admins can create bodies' });
-            }
-
-            const { name, description, website_url, initial_admin_id } = req.body;
-
-            // Verify initial admin exists
-            const initialAdmin = await getUser(initial_admin_id);
-            if (!initialAdmin) {
-                return res.status(400).json({ error: 'Initial admin user not found' });
-            }
-
-            const newBody = await createBodyWithAdmin(name, description, website_url, initial_admin_id);
-            res.status(201).json(newBody);
-        } catch (error) {
+            const bodyObj = await BodyService.createBody(req.user!.id, req.body);
+            res.status(201).json(bodyObj);
+        } catch (error: any) {
             console.error('Create body error', error);
-            res.status(500).json({ error: 'Internal server error' });
+            if (error.message.startsWith('Forbidden')) {
+                res.status(403).json({ error: error.message });
+            } else if (error.message === 'Missing required fields' || error.message === 'Initial admin user not found') {
+                res.status(400).json({ error: error.message });
+            } else {
+                res.status(500).json({ error: 'Internal server error' });
+            }
         }
     }
 );
 
 router.get('/', authMiddleware, async (req, res) => {
     try {
-        const bodies = await listBodies();
+        const bodies = await BodyService.listAll();
         res.json(bodies);
     } catch (error) {
         console.error('List bodies error', error);
@@ -70,7 +43,7 @@ router.get('/', authMiddleware, async (req, res) => {
 
 router.get('/followed', authMiddleware, async (req, res) => {
     try {
-        const bodies = await listFollowedBodies(req.user!.id);
+        const bodies = await BodyService.listFollowed(req.user!.id);
         res.json(bodies);
     } catch (error) {
         console.error('List followed bodies error', error);
@@ -80,12 +53,9 @@ router.get('/followed', authMiddleware, async (req, res) => {
 
 router.get('/:id', authMiddleware, async (req, res) => {
     try {
-        const bodyObj = await getBody(req.params.id as string);
+        const bodyObj = await BodyService.getBody(req.params.id, req.user!.id);
         if (!bodyObj) return res.status(404).json({ error: 'Body not found' });
-
-        const isFollowing = await isFollowingBody(bodyObj.id, req.user!.id);
-        const userRole = await getMemberRole(bodyObj.id, req.user!.id);
-        res.json({ ...bodyObj, is_following: isFollowing, user_role: userRole });
+        res.json(bodyObj);
     } catch (error) {
         console.error('Get body error', error);
         res.status(500).json({ error: 'Internal server error' });
@@ -100,34 +70,33 @@ router.put('/:id',
         if (!errors.isEmpty()) {
             return res.status(400).json({ errors: errors.array() });
         }
-        const { name, description, website_url } = req.body;
         try {
-            const hasPermission = await checkBodyPermission(req.user!.id, req.params.id as string, BodyAction.EDIT_BODY);
-            if (!hasPermission) {
-                return res.status(403).json({ error: 'Forbidden: You do not have permission to edit this body' });
-            }
-
-            const bodyObj = await updateBody(req.params.id as string, name, description, website_url);
+            const bodyObj = await BodyService.updateBody(req.user!.id, req.params.id, req.body);
             res.json(bodyObj);
-        } catch (error) {
+        } catch (error: any) {
             console.error('Update body error', error);
-            res.status(500).json({ error: 'Internal server error' });
+            if (error.message.startsWith('Forbidden')) {
+                res.status(403).json({ error: error.message });
+            } else if (error.message === 'Name is required') {
+                res.status(400).json({ error: error.message });
+            } else {
+                res.status(500).json({ error: 'Internal server error' });
+            }
         }
     }
 );
 
 router.delete('/:id', authMiddleware, async (req, res) => {
     try {
-        const hasPermission = await checkBodyPermission(req.user!.id, req.params.id as string, BodyAction.DELETE_BODY);
-        if (!hasPermission) {
-            return res.status(403).json({ error: 'Forbidden: You do not have permission to delete this body' });
-        }
-
-        await deleteBody(req.params.id as string);
+        await BodyService.deleteBody(req.user!.id, req.params.id);
         res.status(204).send();
-    } catch (error) {
+    } catch (error: any) {
         console.error('Delete body error', error);
-        res.status(500).json({ error: 'Internal server error' });
+        if (error.message.startsWith('Forbidden')) {
+            res.status(403).json({ error: error.message });
+        } else {
+            res.status(500).json({ error: 'Internal server error' });
+        }
     }
 });
 
@@ -135,7 +104,7 @@ router.get('/:id/posts', authMiddleware, async (req, res) => {
     const limit = req.query.limit ? parseInt(req.query.limit as any) : 20;
     const cursor = req.query.cursor as any;
     try {
-        const posts = await listPosts(req.user!.id, limit, cursor, req.params.id as string);
+        const posts = await BodyService.listBodyPosts(req.user!.id, req.params.id, limit, cursor);
         res.json(posts);
     } catch (error) {
         console.error('List body posts error', error);
@@ -145,7 +114,7 @@ router.get('/:id/posts', authMiddleware, async (req, res) => {
 
 router.post('/:id/follow', authMiddleware, async (req, res) => {
     try {
-        await followBody(req.params.id as string, req.user!.id);
+        await BodyService.followBody(req.params.id, req.user!.id);
         res.json({ status: 'followed' });
     } catch (error) {
         console.error('Follow body error', error);
@@ -155,7 +124,7 @@ router.post('/:id/follow', authMiddleware, async (req, res) => {
 
 router.delete('/:id/follow', authMiddleware, async (req, res) => {
     try {
-        await unfollowBody(req.params.id as string, req.user!.id);
+        await BodyService.unfollowBody(req.params.id, req.user!.id);
         res.json({ status: 'unfollowed' });
     } catch (error) {
         console.error('Unfollow body error', error);
@@ -163,19 +132,17 @@ router.delete('/:id/follow', authMiddleware, async (req, res) => {
     }
 });
 
-// Member Management Routes
-
 router.get('/:id/members', authMiddleware, async (req, res) => {
     try {
-        const hasPermission = await checkBodyPermission(req.user!.id, req.params.id as string, BodyAction.MANAGE_MEMBERS);
-        if (!hasPermission) {
-            return res.status(403).json({ error: 'Forbidden: Only admins can view members list' });
-        }
-        const members = await listMembers(req.params.id as string);
+        const members = await BodyService.listMembers(req.user!.id, req.params.id);
         res.json(members);
-    } catch (error) {
+    } catch (error: any) {
         console.error('List members error', error);
-        res.status(500).json({ error: 'Internal server error' });
+        if (error.message.startsWith('Forbidden')) {
+            res.status(403).json({ error: error.message });
+        } else {
+            res.status(500).json({ error: 'Internal server error' });
+        }
     }
 });
 
@@ -189,15 +156,17 @@ router.post('/:id/members',
             return res.status(400).json({ errors: errors.array() });
         }
         try {
-            const hasPermission = await checkBodyPermission(req.user!.id, req.params.id as string, BodyAction.MANAGE_MEMBERS);
-            if (!hasPermission) {
-                return res.status(403).json({ error: 'Forbidden: Only admins can add members' });
-            }
-            await addMember(req.params.id as string, req.body.user_id, req.body.role);
+            await BodyService.addMember(req.user!.id, req.params.id, req.body);
             res.status(201).json({ status: 'member added' });
-        } catch (error) {
+        } catch (error: any) {
             console.error('Add member error', error);
-            res.status(500).json({ error: 'Internal server error' });
+            if (error.message.startsWith('Forbidden')) {
+                res.status(403).json({ error: error.message });
+            } else if (error.message === 'Missing required fields') {
+                res.status(400).json({ error: error.message });
+            } else {
+                res.status(500).json({ error: 'Internal server error' });
+            }
         }
     }
 );
@@ -211,50 +180,34 @@ router.put('/:id/members/:userId',
             return res.status(400).json({ errors: errors.array() });
         }
         try {
-            const hasPermission = await checkBodyPermission(req.user!.id, req.params.id as string, BodyAction.MANAGE_MEMBERS);
-            if (!hasPermission) {
-                return res.status(403).json({ error: 'Forbidden: Only admins can manage roles' });
-            }
-
-            // Safeguard: preventing removal of the last BODY_ADMIN
-            const currentRole = await getMemberRole(req.params.id as string, req.params.userId as string);
-            if (currentRole === 'BODY_ADMIN' && req.body.role !== 'BODY_ADMIN') {
-                const adminCount = await countAdmins(req.params.id as string);
-                if (adminCount <= 1) {
-                    return res.status(400).json({ error: 'Cannot demote the last administrator' });
-                }
-            }
-
-            await addMember(req.params.id as string, req.params.userId as string, req.body.role);
+            await BodyService.updateMemberRole(req.user!.id, req.params.id, req.params.userId, req.body.role);
             res.json({ status: 'role updated' });
-        } catch (error) {
+        } catch (error: any) {
             console.error('Update member role error', error);
-            res.status(500).json({ error: 'Internal server error' });
+            if (error.message.startsWith('Forbidden')) {
+                res.status(403).json({ error: error.message });
+            } else if (error.message === 'Cannot demote the last administrator') {
+                res.status(400).json({ error: error.message });
+            } else {
+                res.status(500).json({ error: 'Internal server error' });
+            }
         }
     }
 );
 
 router.delete('/:id/members/:userId', authMiddleware, async (req, res) => {
     try {
-        const hasPermission = await checkBodyPermission(req.user!.id, req.params.id as string, BodyAction.MANAGE_MEMBERS);
-        if (!hasPermission) {
-            return res.status(403).json({ error: 'Forbidden: Only admins can remove members' });
-        }
-
-        // Safeguard: preventing removal of the last BODY_ADMIN
-        const currentRole = await getMemberRole(req.params.id as string, req.params.userId as string);
-        if (currentRole === 'BODY_ADMIN') {
-            const adminCount = await countAdmins(req.params.id as string);
-            if (adminCount <= 1) {
-                return res.status(400).json({ error: 'Cannot remove the last administrator' });
-            }
-        }
-
-        await removeMember(req.params.id as string, req.params.userId as string);
+        await BodyService.removeMember(req.user!.id, req.params.id, req.params.userId);
         res.status(204).send();
-    } catch (error) {
+    } catch (error: any) {
         console.error('Remove member error', error);
-        res.status(500).json({ error: 'Internal server error' });
+        if (error.message.startsWith('Forbidden')) {
+            res.status(403).json({ error: error.message });
+        } else if (error.message === 'Cannot remove the last administrator') {
+            res.status(400).json({ error: error.message });
+        } else {
+            res.status(500).json({ error: 'Internal server error' });
+        }
     }
 });
 
