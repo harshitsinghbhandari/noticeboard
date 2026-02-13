@@ -74,13 +74,21 @@ router.patch('/:id/cancel', authMiddleware, async (req, res) => {
 router.get('/', authMiddleware, async (req, res) => {
     try {
         const { lat, lng, radius } = req.query;
-        if (!lat || !lng || !radius) {
-            return res.status(400).json({ error: 'lat, lng, and radius are required' });
+        // Helper to safely parse float from query param
+        const parseQueryParam = (param: string | string[] | undefined, defaultVal: number): number => {
+            if (!param) return defaultVal;
+            const strVal = Array.isArray(param) ? param[0] : param;
+            return parseFloat(strVal);
         }
+
+        const userLat = parseQueryParam(lat as string | string[] | undefined, 19.1240);
+        const userLng = parseQueryParam(lng as string | string[] | undefined, 72.9112);
+        const searchRadius = parseQueryParam(radius as string | string[] | undefined, 50000);
+
         const events = await EventService.listEvents(
-            parseFloat(lat as string),
-            parseFloat(lng as string),
-            parseFloat(radius as string)
+            userLat,
+            userLng,
+            searchRadius
         );
         res.json(events);
     } catch (e: any) {

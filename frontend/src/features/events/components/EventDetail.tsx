@@ -6,7 +6,7 @@ import { Button } from '../../../components/ui/Button';
 export default function EventDetail() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { event, isLoading, error, handleJoin, isJoining } = useEventDetail(id);
+    const { event, isLoading, error, handleJoin, isJoining, handlePublish, isPublishing } = useEventDetail(id);
     const [activeTab, setActiveTab] = useState<'posts' | 'chat' | 'info'>('posts');
 
     if (isLoading && !event) return <div className="p-10 text-center">Loading event...</div>;
@@ -103,7 +103,7 @@ export default function EventDetail() {
                         <div className="bg-white/5 rounded-xl border border-white/10 p-4 flex gap-3">
                             <div className="h-10 w-10 rounded-full bg-slate-700"></div>
                             <div className="flex-1">
-                                <input className="w-full bg-transparent border-none focus:ring-0 text-white placeholder-slate-500 p-2" placeholder="Post a hype message..." type="text"/>
+                                <input className="w-full bg-transparent border-none focus:ring-0 text-white placeholder-slate-500 p-2" placeholder="Post a hype message..." type="text" />
                             </div>
                             <button className="bg-primary text-white p-2 rounded-lg flex items-center justify-center">
                                 <span className="material-symbols-outlined">send</span>
@@ -169,9 +169,19 @@ export default function EventDetail() {
                         <span className="text-sm font-bold text-white">{event.capacity ? `${event.capacity} seats` : 'Unlimited'}</span>
                     </div>
                     <div className="flex flex-1 md:flex-initial gap-3">
+                        {event.status === 'draft' && (
+                            <button
+                                onClick={handlePublish}
+                                disabled={isPublishing}
+                                className="flex-1 md:w-48 py-3.5 bg-green-600 hover:bg-green-700 text-white text-sm font-extrabold rounded-xl shadow-lg shadow-green-600/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                                <span className="material-symbols-outlined text-lg">publish</span>
+                                {isPublishing ? 'Publishing...' : 'Publish Event'}
+                            </button>
+                        )}
                         <button
                             onClick={handleJoin}
-                            disabled={isJoining}
+                            disabled={isJoining || event.status === 'draft'}
                             className="flex-1 md:w-48 py-3.5 bg-primary hover:bg-primary/90 text-white text-sm font-extrabold rounded-xl shadow-lg shadow-primary/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                         >
                             <span className="material-symbols-outlined text-lg">check_circle</span>

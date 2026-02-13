@@ -15,3 +15,6 @@ export const joinEvent = (id: string) =>
 
 export const getEventAttendees = (id: string) =>
     apiClient.get<UserProfile[]>(`/events/${id}/attendees`);
+
+export const publishEvent = (id: string) =>
+    apiClient.patch(`/events/${id}/publish`);

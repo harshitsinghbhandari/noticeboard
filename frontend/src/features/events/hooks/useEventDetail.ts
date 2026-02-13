@@ -15,6 +15,11 @@ export function useEventDetail(eventId: string | undefined) {
         isLoading: isJoining
     } = useApi(eventsApi.joinEvent);
 
+    const {
+        execute: publish,
+        isLoading: isPublishing
+    } = useApi(eventsApi.publishEvent);
+
     useEffect(() => {
         if (eventId) {
             fetchEvent(eventId);
@@ -28,11 +33,20 @@ export function useEventDetail(eventId: string | undefined) {
         }
     };
 
+    const handlePublish = async () => {
+        if (eventId) {
+            await publish(eventId);
+            await fetchEvent(eventId); // Refresh data
+        }
+    };
+
     return {
         event,
         isLoading,
         error,
         handleJoin,
-        isJoining
+        isJoining,
+        handlePublish,
+        isPublishing
     };
 }
