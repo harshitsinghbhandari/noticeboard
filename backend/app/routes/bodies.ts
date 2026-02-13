@@ -112,6 +112,16 @@ router.get('/:id/posts', authMiddleware, async (req, res) => {
     }
 });
 
+router.get('/:id/events', authMiddleware, async (req, res) => {
+    try {
+        const events = await BodyService.listBodyEvents(req.params.id);
+        res.json(events);
+    } catch (error) {
+        console.error('List body events error', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 router.post('/:id/follow', authMiddleware, async (req, res) => {
     try {
         await BodyService.followBody(req.params.id, req.user!.id);

@@ -27,13 +27,20 @@ export const useBodyProfile = (id: string | undefined) => {
         setData: setMembers
     } = useApi(bodiesApi.getBodyMembers);
 
+    const {
+        data: events,
+        execute: executeFetchEvents,
+        setData: setEvents
+    } = useApi(bodiesApi.getBodyEvents);
+
     const fetchBodyData = useCallback(async () => {
         if (!id) return;
         try {
             const bodyData = await executeFetchBody(id);
             await Promise.all([
                 executeFetchOpenings(id),
-                executeFetchPosts(id)
+                executeFetchPosts(id),
+                executeFetchEvents(id)
             ]);
 
             if (bodyData?.user_role === 'BODY_ADMIN') {
@@ -42,7 +49,7 @@ export const useBodyProfile = (id: string | undefined) => {
         } catch (err) {
             console.error('Failed to fetch body data', err);
         }
-    }, [id, executeFetchBody, executeFetchOpenings, executeFetchPosts, executeFetchMembers]);
+    }, [id, executeFetchBody, executeFetchOpenings, executeFetchPosts, executeFetchMembers, executeFetchEvents]);
 
     useEffect(() => {
         fetchBodyData();
@@ -98,6 +105,8 @@ export const useBodyProfile = (id: string | undefined) => {
         toggleFollow,
         handleAddMember,
         handleRemoveMember,
-        handleChangeRole
+        handleChangeRole,
+        events: events || [],
+        setEvents
     };
 };

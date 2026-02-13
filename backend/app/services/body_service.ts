@@ -18,6 +18,7 @@ import {
 } from '../../infrastructure/db/body_repository';
 import { getUser } from '../../infrastructure/db/user_repository';
 import { listPosts } from '../../infrastructure/db/post_repository';
+import { getEventsByBodyId } from '../../infrastructure/db/event_repository';
 
 export class BodyService {
     static async createBody(userId: string, bodyData: any) {
@@ -81,6 +82,10 @@ export class BodyService {
 
     static async listBodyPosts(userId: string, bodyId: string, limit: number, cursor?: string) {
         return await listPosts(userId, limit, cursor, bodyId);
+    }
+
+    static async listBodyEvents(bodyId: string) {
+        return await getEventsByBodyId(bodyId);
     }
 
     static async followBody(bodyId: string, userId: string) {

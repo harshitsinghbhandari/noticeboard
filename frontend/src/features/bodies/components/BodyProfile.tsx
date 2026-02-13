@@ -6,6 +6,8 @@ import PostCard from '../../feed/components/PostCard';
 import apiClient from '../../../api/client';
 import { useBodyProfile } from '../hooks/useBodyProfile';
 import { usePostActions } from '../../feed/hooks/usePostActions';
+import EventCard from './EventCard';
+import { createEvent } from '../api/bodies';
 
 export default function BodyProfile() {
   const { id } = useParams();
@@ -20,7 +22,8 @@ export default function BodyProfile() {
     toggleFollow,
     handleAddMember: addMember,
     handleRemoveMember: removeMember,
-    handleChangeRole: changeRole
+    handleChangeRole: changeRole,
+    events
   } = useBodyProfile(id);
 
   const onPostAdded = (newPost: any) => {
@@ -44,7 +47,16 @@ export default function BodyProfile() {
   const [addingMember, setAddingMember] = useState(false);
 
   // Tabs
-  const [activeTab, setActiveTab] = useState<'posts' | 'openings'>('posts');
+  const [activeTab, setActiveTab] = useState<'posts' | 'openings' | 'events'>('posts');
+
+  // Create Event State
+  const [showCreateEvent, setShowCreateEvent] = useState(false);
+  const [newEventTitle, setNewEventTitle] = useState('');
+  const [newEventDesc, setNewEventDesc] = useState('');
+  const [newEventLocation, setNewEventLocation] = useState('');
+  const [newEventStartTime, setNewEventStartTime] = useState('');
+  const [newEventEndTime, setNewEventEndTime] = useState('');
+  const [newEventCapacity, setNewEventCapacity] = useState('');
 
   // Create Opening State
   const [showCreateOpening, setShowCreateOpening] = useState(false);
@@ -134,6 +146,34 @@ export default function BodyProfile() {
     } catch (err) {
       console.error('Failed to create opening', err);
       alert('Failed to create opening');
+    }
+  };
+
+  const handleCreateEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await createEvent({
+        bodyId: id,
+        title: newEventTitle,
+        description: newEventDesc,
+        location_name: newEventLocation,
+        latitude: 0, // Mocking for now as we don't have map picker
+        longitude: 0, // Mocking for now
+        start_time: new Date(newEventStartTime).toISOString(),
+        end_time: new Date(newEventEndTime).toISOString(),
+        capacity: newEventCapacity ? parseInt(newEventCapacity) : null
+      });
+      setShowCreateEvent(false);
+      setNewEventTitle('');
+      setNewEventDesc('');
+      setNewEventLocation('');
+      setNewEventStartTime('');
+      setNewEventEndTime('');
+      setNewEventCapacity('');
+      fetchBodyData();
+    } catch (err: any) {
+      console.error('Failed to create event', err);
+      alert(err.response?.data?.error || 'Failed to create event');
     }
   };
 
@@ -241,6 +281,12 @@ export default function BodyProfile() {
               onClick={() => setActiveTab('openings')}
             >
               Openings
+            </button>
+            <button
+              className={`py-2 px-4 font-semibold ${activeTab === 'events' ? 'border-b-2 border-primary text-primary' : 'text-gray-500 hover:text-gray-700'}`}
+              onClick={() => setActiveTab('events')}
+            >
+              Events
             </button>
           </div>
 
@@ -393,6 +439,99 @@ export default function BodyProfile() {
                   <div className="bg-white dark:bg-gray-800 p-8 rounded shadow border border-gray-200 dark:border-gray-700 text-center text-gray-500">
                     <span className="material-symbols-outlined text-4xl mb-2 text-gray-300">work_off</span>
                     <p>No active openings at this time.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'events' && (
+            <div className="max-w-3xl mx-auto">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold">Upcoming Events</h2>
+                {canCreateEvent && (
+                  <Button size="sm" onClick={() => setShowCreateEvent(true)}>+ Create Event</Button>
+                )}
+              </div>
+
+              {showCreateEvent && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                  <div className="bg-white dark:bg-gray-800 p-6 rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+                    <h3 className="text-xl font-bold mb-4">Create New Event</h3>
+                    <form onSubmit={handleCreateEvent} className="space-y-4">
+                      <input
+                        placeholder="Event Title"
+                        className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-black"
+                        value={newEventTitle}
+                        onChange={e => setNewEventTitle(e.target.value)}
+                        required
+                      />
+                      <textarea
+                        placeholder="Description"
+                        className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-black"
+                        rows={3}
+                        value={newEventDesc}
+                        onChange={e => setNewEventDesc(e.target.value)}
+                        required
+                      />
+                      <input
+                        placeholder="Location"
+                        className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-black"
+                        value={newEventLocation}
+                        onChange={e => setNewEventLocation(e.target.value)}
+                        required
+                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-xs text-gray-500 mb-1 block">Start Time</label>
+                          <input
+                            type="datetime-local"
+                            className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-black"
+                            value={newEventStartTime}
+                            onChange={e => setNewEventStartTime(e.target.value)}
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 mb-1 block">End Time</label>
+                          <input
+                            type="datetime-local"
+                            className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-black"
+                            value={newEventEndTime}
+                            onChange={e => setNewEventEndTime(e.target.value)}
+                            required
+                          />
+                        </div>
+                      </div>
+                      <input
+                        type="number"
+                        placeholder="Capacity (Optional)"
+                        className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-black"
+                        value={newEventCapacity}
+                        onChange={e => setNewEventCapacity(e.target.value)}
+                      />
+                      <div className="flex justify-end gap-2 mt-4">
+                        <Button variant="outline" type="button" onClick={() => setShowCreateEvent(false)}>Cancel</Button>
+                        <Button type="submit">Create</Button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-4">
+                {events.length > 0 ? (
+                  events.map(event => (
+                    <EventCard
+                      key={event.id}
+                      event={event}
+                      onJoin={() => fetchBodyData()}
+                    />
+                  ))
+                ) : (
+                  <div className="bg-white dark:bg-gray-800 p-8 rounded shadow border border-gray-200 dark:border-gray-700 text-center text-gray-500">
+                    <span className="material-symbols-outlined text-4xl mb-2 text-gray-300">event_busy</span>
+                    <p>No upcoming events.</p>
                   </div>
                 )}
               </div>

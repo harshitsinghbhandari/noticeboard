@@ -138,6 +138,14 @@ export async function getEventByGroupId(groupId: string): Promise<Event | null> 
     return res.rows[0] || null;
 }
 
+export async function getEventsByBodyId(bodyId: string): Promise<Event[]> {
+    const res = await pool.query(
+        "SELECT * FROM events WHERE body_id = $1 AND status != 'cancelled' ORDER BY start_time ASC",
+        [bodyId]
+    );
+    return res.rows;
+}
+
 export async function updateEvent(eventId: string, data: any): Promise<Event> {
     const client = await pool.connect();
     try {

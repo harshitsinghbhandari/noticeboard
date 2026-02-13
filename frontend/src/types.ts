@@ -167,3 +167,20 @@ export interface GroupMessage {
     is_organizer?: boolean;
     isOrganizer?: boolean; // backend uses both or depends on JSON conversion
 }
+export interface Event {
+    id: string;
+    body_id: string;
+    group_id: string;
+    title: string;
+    description: string;
+    location_name: string;
+    latitude: number;
+    longitude: number;
+    start_time: string;
+    end_time: string;
+    capacity: number | null;
+    status: 'draft' | 'published' | 'cancelled' | 'completed';
+    created_at: string;
+    updated_at: string;
+    cancelled_at?: string;
+}

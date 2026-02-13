@@ -1,5 +1,5 @@
 import apiClient from '../../../api/client';
-import type { Body, Post, BodyMember, BodyRole, Opening } from '../../../types';
+import type { Body, Post, BodyMember, BodyRole, Opening, Event } from '../../../types';
 
 export const getBodies = () => apiClient.get<Body[]>('/bodies');
 export const getFollowedBodies = () => apiClient.get<Body[]>('/bodies/followed');
@@ -33,3 +33,7 @@ export const getBodyPosts = (id: string, limit: number = 20, cursor?: string) =>
 };
 
 export const getBodyOpenings = (id: string) => apiClient.get<Opening[]>(`/openings?body_id=${id}`);
+
+export const getBodyEvents = (id: string) => apiClient.get<Event[]>(`/bodies/${id}/events`);
+
+export const createEvent = (data: any) => apiClient.post('/events', data);
