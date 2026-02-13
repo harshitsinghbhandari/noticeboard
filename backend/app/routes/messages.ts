@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authMiddleware } from '../../infrastructure/http/auth_middleware';
-import { listConversations, getChat, markMessagesAsRead, sendMessage } from '../../infrastructure/db/message_repository';
+import { listConversations, getChat, markMessagesAsRead, sendMessage, getUnreadSummary } from '../../infrastructure/db/message_repository';
 import { io } from '../server';
 
 const router = Router();
@@ -11,6 +11,16 @@ router.get('/', authMiddleware, async (req, res) => {
         res.json(conversations);
     } catch (error) {
         console.error('List conversations error', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+router.get('/unread-summary', authMiddleware, async (req, res) => {
+    try {
+        const summary = await getUnreadSummary(req.user!.id);
+        res.json(summary);
+    } catch (error) {
+        console.error('Get unread summary error', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
@@ -28,6 +38,13 @@ router.get('/:userId', authMiddleware, async (req, res) => {
             });
         });
 
+        if (readMessageIds.length > 0) {
+            io.to(`user:${req.user!.id}`).emit("unread:decrement", {
+                from: userId,
+                count: readMessageIds.length
+            });
+        }
+
         res.json(chat);
     } catch (error) {
         console.error('Get chat error', error);
@@ -44,6 +61,10 @@ router.post('/', authMiddleware, async (req, res) => {
         const message = await sendMessage(req.user!.id, receiver_id, message_text, attachment_url);
 
         io.to(`user:${receiver_id}`).emit("message:new", message);
+        io.to(`user:${receiver_id}`).emit("unread:update", {
+            from: req.user!.id,
+            increment: 1
+        });
 
         res.status(201).json(message);
     } catch (error: any) {

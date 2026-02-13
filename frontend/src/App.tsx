@@ -17,6 +17,7 @@ import Login from './components/Login';
 import Register from './components/Register';
 import type { Notification } from './types';
 import { DarkModeProvider } from './components/DarkModeContext';
+import { UnreadProvider } from './context/UnreadContext';
 
 // ⚠️ CHANGE ME: Update these values to match your Keycloak setup
 const KEYCLOAK_CONFIG = {
@@ -108,25 +109,27 @@ function AppContent() {
         !authenticated ? (
           <Navigate to="/login" replace />
         ) : (
-          <Layout
-            userEmail={parsedToken?.email}
-            currentUserId={parsedToken?.sub}
-            onLogout={handleLogout}
-          >
-            <Routes>
-              <Route path="/" element={<Navigate to="/feed" replace />} />
-              <Route path="/feed" element={<Feed />} />
-              <Route path="/connections" element={<Connections currentUserId={parsedToken?.sub} />} />
-              <Route path="/bodies" element={<Bodies />} />
-              <Route path="/bodies/:id" element={<BodyProfile />} />
-              <Route path="/openings" element={<Openings />} />
-              <Route path="/messages" element={<Messages />} />
-              <Route path="/messages/:userId" element={<Messages />} />
-              <Route path="/notifications" element={<NotificationsWithNavigation />} />
-              <Route path="/profile/:id" element={<Profile currentUserId={parsedToken?.sub} />} />
-              <Route path="/posts/:id" element={<SinglePostWrapper />} />
-            </Routes>
-          </Layout>
+          <UnreadProvider currentUserId={parsedToken?.sub}>
+            <Layout
+              userEmail={parsedToken?.email}
+              currentUserId={parsedToken?.sub}
+              onLogout={handleLogout}
+            >
+              <Routes>
+                <Route path="/" element={<Navigate to="/feed" replace />} />
+                <Route path="/feed" element={<Feed />} />
+                <Route path="/connections" element={<Connections currentUserId={parsedToken?.sub} />} />
+                <Route path="/bodies" element={<Bodies />} />
+                <Route path="/bodies/:id" element={<BodyProfile />} />
+                <Route path="/openings" element={<Openings />} />
+                <Route path="/messages" element={<Messages />} />
+                <Route path="/messages/:userId" element={<Messages />} />
+                <Route path="/notifications" element={<NotificationsWithNavigation />} />
+                <Route path="/profile/:id" element={<Profile currentUserId={parsedToken?.sub} />} />
+                <Route path="/posts/:id" element={<SinglePostWrapper />} />
+              </Routes>
+            </Layout>
+          </UnreadProvider>
         )
       } />
     </Routes>

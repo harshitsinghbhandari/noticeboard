@@ -141,3 +141,28 @@ export async function markMessagesAsRead(receiverId: string, senderId: string): 
     );
     return res.rows.map(row => row.id);
 }
+
+export async function getUnreadSummary(userId: string) {
+    const res = await pool.query(
+        `SELECT
+            sender_id,
+            COUNT(*)::int as count
+         FROM messages
+         WHERE receiver_id = $1
+           AND read_at IS NULL
+         GROUP BY sender_id`,
+        [userId]
+    );
+
+    const conversations = res.rows.map(row => ({
+        userId: row.sender_id,
+        unreadCount: parseInt(row.count, 10)
+    }));
+
+    const totalUnread = conversations.reduce((sum, item) => sum + item.unreadCount, 0);
+
+    return {
+        totalUnread,
+        conversations
+    };
+}

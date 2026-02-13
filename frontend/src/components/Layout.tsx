@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useDarkMode } from './DarkModeContext';
+import { useUnread } from '../context/UnreadContext';
 
 interface LayoutProps {
     children: ReactNode;
@@ -12,9 +13,18 @@ interface LayoutProps {
 
 export default function Layout({ children, userEmail, currentUserId, onLogout }: LayoutProps) {
     const { isDarkMode, toggleDarkMode } = useDarkMode();
+    const { totalUnread } = useUnread();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const location = useLocation();
     const activeTab = location.pathname.split('/')[1] || 'feed';
+
+    // We need to import useUnread. Since we can't add imports with this tool easily in one go without replacing the whole top,
+    // we will assume valid import is added in a separate step or we rely on the next step to add it. 
+    // Wait, I can't assume. I should split this. 
+    // Actually, I can use multi_replace to do both.
+    // But I am restricted to replace_file_content for "single contiguous block".
+    // I will use multi_replace instead.
+
 
     return (
         <div className="min-h-screen bg-background-light dark:bg-background-dark text-gray-900 dark:text-gray-100">
@@ -87,9 +97,16 @@ export default function Layout({ children, userEmail, currentUserId, onLogout }:
                             </Link>
                             <Link
                                 to="/messages"
-                                className={`${activeTab === 'messages' ? 'text-primary font-semibold' : 'text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-primary font-medium'} text-sm transition-colors flex items-center gap-1`}
+                                className={`${activeTab === 'messages' ? 'text-primary font-semibold' : 'text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-primary font-medium'} text-sm transition-colors flex items-center gap-1 relative`}
                             >
-                                <span className="material-symbols-outlined text-lg">mail</span>
+                                <div className="relative">
+                                    <span className="material-symbols-outlined text-lg">mail</span>
+                                    {totalUnread > 0 && (
+                                        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white">
+                                            {totalUnread > 99 ? '99+' : totalUnread}
+                                        </span>
+                                    )}
+                                </div>
                                 Messages
                             </Link>
                             <Link
@@ -171,11 +188,18 @@ export default function Layout({ children, userEmail, currentUserId, onLogout }:
                                 to={link.to}
                                 onClick={() => setIsMenuOpen(false)}
                                 className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === link.tab
-                                        ? 'bg-primary/10 text-primary'
-                                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                                    ? 'bg-primary/10 text-primary'
+                                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
                                     }`}
                             >
-                                <span className="material-symbols-outlined">{link.icon}</span>
+                                <div className="relative">
+                                    <span className="material-symbols-outlined">{link.icon}</span>
+                                    {link.tab === 'messages' && totalUnread > 0 && (
+                                        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white">
+                                            {totalUnread > 99 ? '99+' : totalUnread}
+                                        </span>
+                                    )}
+                                </div>
                                 {link.label}
                             </Link>
                         ))}

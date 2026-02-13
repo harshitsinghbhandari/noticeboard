@@ -15,10 +15,30 @@ export const io = new Server(server, {
 
 io.use(socketAuthMiddleware);
 
-io.on('connection', (socket) => {
+io.on('connection', async (socket) => {
     if (socket.user) {
-        socket.join(`user:${socket.user.id}`);
-        console.log(`User connected and joined room: user:${socket.user.id}`);
+        const userId = socket.user.id;
+        socket.join(`user:${userId}`);
+        console.log(`User connected and joined room: user:${userId}`);
+
+        // Join all active group rooms
+        try {
+            // We need to import pool here or in a better way, but direct query is fine for this specialized logic
+            // avoiding circular dependency with group_repository if it imports io (it does not, but routes do)
+            // Let's use a fresh pool instance or import the existing one
+            const { pool } = await import('../infrastructure/db/pool');
+            const res = await pool.query(
+                "SELECT group_id FROM group_members WHERE user_id = $1 AND status = 'active'",
+                [userId]
+            );
+
+            res.rows.forEach(row => {
+                socket.join(`group:${row.group_id}`);
+                console.log(`User ${userId} joined room: group:${row.group_id}`);
+            });
+        } catch (e) {
+            console.error(`Failed to join group rooms for user ${userId}`, e);
+        }
     }
 });
 

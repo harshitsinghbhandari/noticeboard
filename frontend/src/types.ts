@@ -128,3 +128,40 @@ export interface BodyMember {
     last_name: string;
     email: string;
 }
+
+export interface Group {
+    id: string;
+    name: string;
+    description: string;
+    created_by: string;
+    type: 'regular' | 'event';
+    max_members: number;
+    is_active: boolean;
+    created_at: string;
+    unread_count?: number;
+    last_message?: {
+        content: string;
+        created_at: string;
+        sender_first_name: string;
+        sender_last_name: string;
+    } | null;
+}
+
+export interface GroupMember {
+    group_id: string;
+    user_id: string;
+    role: 'owner' | 'admin' | 'member';
+    status: 'active' | 'left' | 'removed';
+    joined_at: string;
+}
+
+export interface GroupMessage {
+    id: string;
+    group_id: string;
+    sender_id: string;
+    content: string;
+    created_at: string;
+    sender_first_name?: string;
+    sender_last_name?: string;
+    read_at?: string;
+}
