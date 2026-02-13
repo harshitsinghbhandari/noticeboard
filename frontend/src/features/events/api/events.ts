@@ -7,6 +7,9 @@ export const getEvents = (params?: { lat?: number; lng?: number; radius?: number
 export const getEventById = (id: string) =>
     apiClient.get<Event>(`/events/${id}`);
 
+export const getEventByGroupId = (groupId: string) =>
+    apiClient.get<Event>(`/events/group/${groupId}`);
+
 export const joinEvent = (id: string) =>
     apiClient.post(`/events/${id}/join`);
 

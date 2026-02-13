@@ -1,20 +1,12 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, useCallback, type ReactNode } from 'react';
 import apiClient from '../api/client';
 import { socket } from '../utils/socket';
+import { UnreadContext } from './UnreadContextCore';
 
 interface UnreadState {
     totalUnread: number;
     unreadBySender: { [key: string]: number };
 }
-
-interface UnreadContextType {
-    totalUnread: number;
-    unreadBySender: { [key: string]: number };
-    clearUnread: (senderId: string) => void;
-    refreshUnread: () => void;
-}
-
-const UnreadContext = createContext<UnreadContextType | undefined>(undefined);
 
 export function UnreadProvider({ children, currentUserId }: { children: ReactNode; currentUserId?: string }) {
     const [state, setState] = useState<UnreadState>({
@@ -22,7 +14,7 @@ export function UnreadProvider({ children, currentUserId }: { children: ReactNod
         unreadBySender: {},
     });
 
-    const fetchUnreadSummary = async () => {
+    const fetchUnreadSummary = useCallback(async () => {
         if (!currentUserId) return;
         try {
             const [msgRes, groupRes] = await Promise.all([
@@ -52,7 +44,7 @@ export function UnreadProvider({ children, currentUserId }: { children: ReactNod
         } catch (err) {
             console.error('Failed to fetch unread summary', err);
         }
-    };
+    }, [currentUserId]);
 
     const clearUnread = (senderId: string) => {
         setState(prev => {
@@ -71,11 +63,12 @@ export function UnreadProvider({ children, currentUserId }: { children: ReactNod
 
     useEffect(() => {
         if (currentUserId) {
-            fetchUnreadSummary();
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            void fetchUnreadSummary();
         } else {
             setState({ totalUnread: 0, unreadBySender: {} });
         }
-    }, [currentUserId]);
+    }, [currentUserId, fetchUnreadSummary]);
 
     useEffect(() => {
         if (!currentUserId) return;
@@ -110,7 +103,7 @@ export function UnreadProvider({ children, currentUserId }: { children: ReactNod
         };
 
         // Group Events
-        const onGroupMessageNew = (message: any) => {
+        const onGroupMessageNew = (message: { sender_id: string; group_id: string }) => {
             if (message.sender_id === currentUserId) return;
             // Assuming message structure has group_id. 
             // Check if it's already read? Unlikely for new message.
@@ -163,7 +156,7 @@ export function UnreadProvider({ children, currentUserId }: { children: ReactNod
             socket.off('group:read', onGroupRead);
             socket.off('connect', onConnect);
         };
-    }, [currentUserId]);
+    }, [currentUserId, fetchUnreadSummary]);
 
     return (
         <UnreadContext.Provider value={{ ...state, clearUnread, refreshUnread: fetchUnreadSummary }}>
@@ -172,10 +165,3 @@ export function UnreadProvider({ children, currentUserId }: { children: ReactNod
     );
 }
 
-export function useUnread() {
-    const context = useContext(UnreadContext);
-    if (context === undefined) {
-        throw new Error('useUnread must be used within an UnreadProvider');
-    }
-    return context;
-}

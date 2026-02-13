@@ -60,7 +60,7 @@ export default function Feed() {
         try {
             await handleCreatePost(newPostContent, postVisibility);
             setNewPostContent('');
-        } catch (err) {
+        } catch {
             // Error handled in hook
         }
     };

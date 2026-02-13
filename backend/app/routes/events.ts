@@ -89,6 +89,28 @@ router.get('/', authMiddleware, async (req, res) => {
     }
 });
 
+// Get Event by ID
+router.get('/:id', authMiddleware, async (req, res) => {
+    try {
+        const event = await EventService.getEvent(req.params.id);
+        if (!event) return res.status(404).json({ error: 'Event not found' });
+        res.json(event);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Get Event by Group ID
+router.get('/group/:groupId', authMiddleware, async (req, res) => {
+    try {
+        const event = await EventService.getEventByGroupId(req.params.groupId);
+        if (!event) return res.status(404).json({ error: 'Event not found' });
+        res.json(event);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // Add Event Admin
 router.post('/:id/admins', authMiddleware, async (req, res) => {
     try {

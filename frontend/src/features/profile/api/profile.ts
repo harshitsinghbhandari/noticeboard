@@ -4,7 +4,7 @@ import type { UserProfile, Post } from '../../../types';
 export const getMe = () => apiClient.get<UserProfile>('/me');
 export const getUser = (id: string) => apiClient.get<UserProfile>(`/users/${id}`);
 
-export const getMyProfile = () => apiClient.get<any>('/me/profile');
+export const getMyProfile = () => apiClient.get<UserProfile>('/me/profile');
 export const updateMyProfile = (about: string) => apiClient.put('/me/profile', { about });
 
 export const getUserPosts = (userId: string) => apiClient.get<Post[]>(`/users/${userId}/posts`);

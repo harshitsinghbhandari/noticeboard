@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { useDarkMode } from './DarkModeContext';
-import { useUnread } from '../context/UnreadContext';
+import { useDarkMode } from '../hooks/useDarkMode';
+import { useUnread } from '../hooks/useUnread';
 
 interface LayoutProps {
     children: ReactNode;
@@ -32,6 +32,8 @@ export default function Layout({ children, userEmail, currentUserId, onLogout }:
                         <nav className="hidden md:flex items-center gap-6">
                             <Link to="/events" className={`text-sm font-semibold transition-colors ${activeTab === 'events' ? 'text-primary' : 'hover:text-primary text-slate-400'}`}>Discover</Link>
                             <Link to="/feed" className={`text-sm font-semibold transition-colors ${activeTab === 'feed' ? 'text-primary' : 'hover:text-primary text-slate-400'}`}>Feed</Link>
+                            <Link to="/bodies" className={`text-sm font-semibold transition-colors ${activeTab === 'bodies' ? 'text-primary' : 'hover:text-primary text-slate-400'}`}>Bodies</Link>
+                            <Link to="/messages" className={`text-sm font-semibold transition-colors ${activeTab === 'messages' ? 'text-primary' : 'hover:text-primary text-slate-400'}`}>Messages</Link>
                             <Link to="/connections" className={`text-sm font-semibold transition-colors ${activeTab === 'connections' ? 'text-primary' : 'hover:text-primary text-slate-400'}`}>Network</Link>
                         </nav>
                     </div>
@@ -77,13 +79,16 @@ export default function Layout({ children, userEmail, currentUserId, onLogout }:
             </main>
 
             {/* Bottom Tab Bar (Mobile) */}
-            <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-lg z-50 md:hidden">
-                <div className="bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-2 flex items-center justify-between shadow-2xl">
+            <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-xl z-50 md:hidden">
+                <div className="bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-1 flex items-center justify-between shadow-2xl">
                     <Link to="/events" className={`p-3 rounded-xl hover:bg-slate-200 dark:hover:bg-white/5 transition-all group relative ${activeTab === 'events' ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-slate-500 dark:text-slate-400'}`}>
                         <span className="material-symbols-outlined block group-hover:text-primary transition-colors">home</span>
                     </Link>
                     <Link to="/feed" className={`p-3 rounded-xl hover:bg-slate-200 dark:hover:bg-white/5 transition-all group relative ${activeTab === 'feed' ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-slate-500 dark:text-slate-400'}`}>
                         <span className="material-symbols-outlined block group-hover:text-primary transition-colors">rss_feed</span>
+                    </Link>
+                    <Link to="/bodies" className={`p-3 rounded-xl hover:bg-slate-200 dark:hover:bg-white/5 transition-all group relative ${activeTab === 'bodies' ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-slate-500 dark:text-slate-400'}`}>
+                        <span className="material-symbols-outlined block group-hover:text-primary transition-colors">hub</span>
                     </Link>
                     <Link to="/messages" className={`p-3 rounded-xl hover:bg-slate-200 dark:hover:bg-white/5 transition-all group relative ${activeTab === 'messages' ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-slate-500 dark:text-slate-400'}`}>
                         <span className="material-symbols-outlined block group-hover:text-primary transition-colors">chat_bubble</span>

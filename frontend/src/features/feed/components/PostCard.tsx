@@ -48,7 +48,7 @@ export default function PostCard({ post, onLike, onCommentAdded }: PostCardProps
             setNewComment('');
             fetchComments();
             onCommentAdded(post.id);
-        } catch (error) {
+        } catch {
             // Error handled in hook/locally
         } finally {
             setIsCommenting(false);

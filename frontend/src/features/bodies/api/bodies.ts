@@ -36,4 +36,4 @@ export const getBodyOpenings = (id: string) => apiClient.get<Opening[]>(`/openin
 
 export const getBodyEvents = (id: string) => apiClient.get<Event[]>(`/bodies/${id}/events`);
 
-export const createEvent = (data: any) => apiClient.post('/events', data);
+export const createEvent = (data: Record<string, unknown>) => apiClient.post<Event>('/events', data);
