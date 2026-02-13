@@ -3,6 +3,8 @@ import Keycloak from 'keycloak-js';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { socket } from './utils/socket';
 import Feed from './features/feed/components/Feed';
+import EventDiscovery from './features/events/components/EventDiscovery';
+import EventDetail from './features/events/components/EventDetail';
 import Notifications from './features/notifications/components/Notifications';
 import Layout from './components/Layout';
 import Connections from './features/connections/components/Connections';
@@ -116,14 +118,16 @@ function AppContent() {
               onLogout={handleLogout}
             >
               <Routes>
-                <Route path="/" element={<Navigate to="/feed" replace />} />
+                <Route path="/" element={<Navigate to="/events" replace />} />
+                <Route path="/events" element={<EventDiscovery />} />
+                <Route path="/events/:id" element={<EventDetail />} />
                 <Route path="/feed" element={<Feed />} />
                 <Route path="/connections" element={<Connections currentUserId={parsedToken?.sub} />} />
                 <Route path="/bodies" element={<Bodies />} />
                 <Route path="/bodies/:id" element={<BodyProfile />} />
                 <Route path="/openings" element={<Openings />} />
-                <Route path="/messages" element={<Messages />} />
-                <Route path="/messages/:userId" element={<Messages />} />
+                <Route path="/messages" element={<Messages currentUserId={parsedToken?.sub} />} />
+                <Route path="/messages/:type/:id" element={<Messages currentUserId={parsedToken?.sub} />} />
                 <Route path="/notifications" element={<NotificationsWithNavigation />} />
                 <Route path="/profile/:id" element={<Profile currentUserId={parsedToken?.sub} />} />
                 <Route path="/posts/:id" element={<SinglePostWrapper />} />
