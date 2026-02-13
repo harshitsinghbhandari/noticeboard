@@ -35,7 +35,7 @@ export const useChat = (chatId: string | null, chatType: 'user' | 'group' | null
     }, [chatId, chatType, clearUnread, executeFetchMessages]);
 
     useEffect(() => {
-        fetchMessages();
+        void fetchMessages();
     }, [fetchMessages]);
 
     useEffect(() => {

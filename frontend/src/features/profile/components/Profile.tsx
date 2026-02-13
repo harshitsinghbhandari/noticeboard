@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import PostCard from '../../feed/components/PostCard';
 import { useProfile } from '../hooks/useProfile';
+import { useApi } from '../../../hooks/useApi';
 import { usePostActions } from '../../feed/hooks/usePostActions';
-import type { Post, Opening } from '../../../types';
+import * as bodiesApi from '../../bodies/api/bodies';
+import * as eventsApi from '../../events/api/events';
+import PostCard from '../../feed/components/PostCard';
+import type { Body, Event, Post } from '../../../types';
 
 interface ProfileProps {
     currentUserId?: string;
@@ -19,22 +22,17 @@ export default function Profile({ currentUserId }: ProfileProps) {
         loading,
         isLoadingPosts,
         isMe,
-        targetUserId,
         updateProfile,
-        handleBlockUser,
-        handleUnblockUser,
-        handleReportUser
     } = useProfile(id, currentUserId);
 
     const [isEditing, setIsEditing] = useState(false);
     const [about, setAbout] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
-    const onPostAdded = (newPost: any) => {
-        setPosts(prev => [newPost as Post, ...(prev || [])]);
-    };
+    const { data: followedClubs } = useApi(bodiesApi.getFollowedBodies);
+    const { data: goingEvents } = useApi(() => eventsApi.getEvents());
 
-    const { handleLikeToggle } = usePostActions(onPostAdded);
+    const { handleLikeToggle } = usePostActions();
 
     const onSave = async () => {
         setIsSaving(true);
@@ -48,13 +46,10 @@ export default function Profile({ currentUserId }: ProfileProps) {
         }
     };
 
-    const onLikeToggle = (postToLike: Post | Opening) => {
-        const postId = postToLike.id;
-        const currentHasLiked = (postToLike as Post).has_liked;
-
-        handleLikeToggle(postId, currentHasLiked, (newHasLiked) => {
+    const onLikeToggle = (postToLike: Post) => {
+        handleLikeToggle(postToLike.id, postToLike.has_liked, (newHasLiked) => {
             setPosts(prev => (prev || []).map(post => {
-                if (post.id === postId) {
+                if (post.id === postToLike.id) {
                     return {
                         ...post,
                         has_liked: newHasLiked,
@@ -66,263 +61,227 @@ export default function Profile({ currentUserId }: ProfileProps) {
         });
     };
 
-    const onCommentAdded = (postId: string) => {
-        setPosts(prev => (prev || []).map(p => p.id === postId ? { ...p, comments_count: Number(p.comments_count) + 1 } : p));
-    };
-
-    if (loading) {
-        return <div className="text-center py-20">Loading profile...</div>;
-    }
-
-    if (!profile) {
-        return <div className="text-center py-20">Profile not found</div>;
-    }
+    if (loading) return <div className="text-center py-20">Loading profile...</div>;
+    if (!profile) return <div className="text-center py-20">Profile not found</div>;
 
     return (
-        <main className="max-w-[1100px] mx-auto p-4 md:py-8">
-            {/* Profile Header */}
-            <div className="bg-white dark:bg-[#1a242f] rounded-xl overflow-hidden shadow-sm border border-[#e8edf3] dark:border-gray-800 mb-6">
-                <div className="h-32 md:h-48 bg-gradient-to-r from-primary to-blue-400 relative">
-                    <button className="absolute bottom-4 right-4 bg-white/20 hover:bg-white/40 backdrop-blur-md text-white px-3 py-1.5 rounded-lg flex items-center gap-2 text-sm transition-all">
-                        <span className="material-symbols-outlined text-sm">photo_camera</span>
-                        Change Cover
-                    </button>
-                </div>
-                <div className="px-6 pb-6 relative">
-                    <div className="flex flex-col md:flex-row md:items-end gap-4 -mt-12 md:-mt-16">
-                        <div className="size-24 md:size-32 rounded-xl border-4 border-white dark:border-[#1a242f] bg-white dark:bg-gray-800 overflow-hidden shadow-lg flex items-center justify-center text-primary font-bold text-4xl">
-                            {profile.first_name?.[0]}
+        <div className="max-w-7xl mx-auto px-4 pt-8 grid grid-cols-1 lg:grid-cols-12 gap-8 pb-24 animate-fade-in">
+            {/* Left Column: Identity & Social Density */}
+            <div className="lg:col-span-4 space-y-6">
+                {/* Profile Card */}
+                <div className="bg-white dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/10 p-6">
+                    <div className="flex flex-col items-center text-center">
+                        <div className="relative group">
+                            <div className="absolute -inset-1 bg-gradient-to-tr from-primary to-purple-400 rounded-full blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
+                            <img
+                                src="https://lh3.googleusercontent.com/aida-public/AB6AXuDeQHhqu9qYMlLqME_TYHru-ajD0aOiwiedNSKBbtIXMEUTj72RAbb-oXUPqAUOQJvv-o4RfS-pGH6nbssBmA8Y-uh6GSG2SQIll_eUdRvTuop6K1FoozciGOC-02Nwb3_kDXSa69kMBmI-wQs99wV9uQqHIHrc7cyOmHnvDqfgCk1PskMbbgzVLucgSiY6HdCNv8fWwOrUxAdZOAASs0DVmo5HkzTQ4bUS4f9b4M-NmQbKLGzuove-75pXvpJR3UyQp0s5MzscLZs"
+                                alt="Profile Avatar"
+                                className="relative w-32 h-32 rounded-full border-4 border-background-dark mb-4 object-cover"
+                            />
+                            <div className="absolute bottom-6 right-2 w-6 h-6 bg-green-500 border-4 border-background-dark rounded-full"></div>
                         </div>
-                        <div className="flex-1 pb-2">
-                            <h1 className="text-2xl md:text-3xl font-bold">{profile.first_name} {profile.last_name}</h1>
-                            <p className="text-gray-500 dark:text-gray-400">{profile.headline || 'Student'}</p>
-                        </div>
-                        <div className="flex gap-2 pb-2">
+                        <h2 className="text-2xl font-bold text-white">{profile.first_name} {profile.last_name}</h2>
+                        <p className="text-primary font-semibold text-sm">{profile.headline || 'Student'}</p>
 
+                        {isEditing ? (
+                            <div className="mt-2 w-full space-y-2">
+                                <textarea
+                                    className="w-full bg-background-dark/50 border border-primary/20 rounded-lg p-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-primary"
+                                    value={about}
+                                    onChange={(e) => setAbout(e.target.value)}
+                                    rows={3}
+                                />
+                                <div className="flex gap-2">
+                                    <button onClick={onSave} disabled={isSaving} className="flex-1 py-1.5 bg-primary text-white text-xs font-bold rounded-lg disabled:opacity-50">Save</button>
+                                    <button onClick={() => setIsEditing(false)} className="flex-1 py-1.5 bg-white/5 text-white text-xs font-bold rounded-lg">Cancel</button>
+                                </div>
+                            </div>
+                        ) : (
+                            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{profile.about || 'Campus Member'}</p>
+                        )}
+
+                        <div className="grid grid-cols-3 w-full gap-4 mt-8 border-t border-slate-200 dark:border-white/10 pt-6">
+                            <div>
+                                <p className="text-lg font-bold text-white">42</p>
+                                <p className="text-[10px] uppercase tracking-wider text-slate-500">Events</p>
+                            </div>
+                            <div>
+                                <p className="text-lg font-bold text-white">156</p>
+                                <p className="text-[10px] uppercase tracking-wider text-slate-500">Mutuals</p>
+                            </div>
+                            <div>
+                                <p className="text-lg font-bold text-white">12</p>
+                                <p className="text-[10px] uppercase tracking-wider text-slate-500">Clubs</p>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-2 w-full mt-6">
                             {isMe ? (
                                 <button
-                                    onClick={() => {
-                                        setIsEditing(!isEditing);
-                                        setAbout(profile.about || '');
-                                    }}
-                                    className="bg-primary text-white px-6 py-2 rounded-lg font-semibold hover:bg-primary/90 transition-colors flex items-center gap-2"
+                                    onClick={() => { setIsEditing(true); setAbout(profile.about || ''); }}
+                                    className="flex-1 bg-primary hover:bg-primary/90 text-white font-bold py-2 rounded-lg transition-all text-sm"
                                 >
-                                    <span className="material-symbols-outlined text-lg">edit</span>
-                                    {isEditing ? 'Cancel' : 'Edit Profile'}
+                                    Edit Profile
                                 </button>
                             ) : (
-                                <>
-                                    {!profile.is_blocked && profile.connection_status === 'accepted' && (
-                                        <button
-                                            onClick={() => navigate(`/messages/${targetUserId}`, { state: { user: profile } })}
-                                            className="bg-primary text-white px-6 py-2 rounded-lg font-semibold hover:bg-primary/90 transition-colors flex items-center gap-2"
-                                        >
-                                            <span className="material-symbols-outlined text-lg">mail</span>
-                                            Message
-                                        </button>
-                                    )}
-
-                                    {profile.is_blocked ? (
-                                        <button
-                                            onClick={async () => {
-                                                if (!confirm('Are you sure you want to unblock this user?')) return;
-                                                try {
-                                                    await handleUnblockUser();
-                                                } catch (err) {
-                                                    alert('Failed to unblock user');
-                                                }
-                                            }}
-                                            className="bg-red-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-red-700 transition-colors flex items-center gap-2"
-                                        >
-                                            <span className="material-symbols-outlined text-lg">block</span>
-                                            Unblock
-                                        </button>
-                                    ) : (
-                                        <>
-                                            <button
-                                                onClick={async () => {
-                                                    if (!confirm('Are you sure you want to block this user? They will not be able to message or connect with you.')) return;
-                                                    try {
-                                                        await handleBlockUser();
-                                                    } catch (err) {
-                                                        alert('Failed to block user');
-                                                    }
-                                                }}
-                                                className="bg-red-100 text-red-600 px-4 py-2 rounded-lg font-semibold hover:bg-red-200 transition-colors flex items-center gap-2"
-                                                title="Block User"
-                                            >
-                                                <span className="material-symbols-outlined text-lg">block</span>
-                                            </button>
-                                            <button
-                                                onClick={async () => {
-                                                    const reason = prompt('Please provide a reason for reporting this user:');
-                                                    if (!reason) return;
-                                                    try {
-                                                        await handleReportUser(reason);
-                                                        alert('User reported successfully.');
-                                                    } catch (err) {
-                                                        alert('Failed to report user');
-                                                    }
-                                                }}
-                                                className="bg-gray-100 text-gray-600 px-4 py-2 rounded-lg font-semibold hover:bg-gray-200 transition-colors flex items-center gap-2"
-                                                title="Report User"
-                                            >
-                                                <span className="material-symbols-outlined text-lg">flag</span>
-                                            </button>
-                                        </>
-                                    )}
-                                </>
+                                <button className="flex-1 bg-primary hover:bg-primary/90 text-white font-bold py-2 rounded-lg transition-all text-sm">Follow</button>
                             )}
-                            <button className="bg-[#e8edf3] dark:bg-gray-800 p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                                <span className="material-symbols-outlined">share</span>
+                            <button
+                                onClick={() => navigate(`/messages/user/${profile.id}`)}
+                                className="px-3 bg-slate-200 dark:bg-white/10 hover:bg-primary/20 hover:text-primary rounded-lg transition-all text-slate-400"
+                            >
+                                <span className="material-symbols-outlined text-lg align-middle">mail</span>
                             </button>
                         </div>
+                    </div>
+                </div>
+
+                {/* Social Density Card */}
+                <div className="bg-primary/10 border border-primary/20 rounded-xl p-6 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <span className="material-symbols-outlined text-6xl text-primary">diversity_3</span>
+                    </div>
+                    <h3 className="text-primary font-bold flex items-center gap-2 mb-2">
+                        <span className="material-symbols-outlined text-sm">bolt</span>
+                        Social Density
+                    </h3>
+                    <p className="text-sm leading-relaxed text-slate-300">
+                        You and {profile.first_name} have a high social overlap. You attended <span className="font-bold text-primary">5 events</span> together recently.
+                    </p>
+                    <a className="mt-4 inline-flex items-center gap-2 text-xs font-bold text-primary uppercase tracking-widest hover:gap-3 transition-all cursor-pointer">
+                        View Shared History
+                        <span className="material-symbols-outlined text-xs">arrow_forward</span>
+                    </a>
+                </div>
+
+                {/* Clubs Followed */}
+                <div className="bg-white dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/10 p-6">
+                    <div className="flex justify-between items-center mb-4 text-white">
+                        <h3 className="font-bold">Clubs Followed</h3>
+                        <button className="text-xs font-bold text-primary">See All</button>
+                    </div>
+                    <div className="space-y-4">
+                        {(followedClubs || []).slice(0, 3).map((club: Body) => (
+                            <div key={club.id} className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                                    <span className="material-symbols-outlined text-primary">groups</span>
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-white">{club.name}</p>
+                                    <p className="text-[10px] text-slate-500">Member</p>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>
 
-            {/* Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                {/* Left Sidebar: About Section */}
-                <div className="lg:col-span-1 space-y-6 lg:sticky lg:top-24">
-                    <div className="bg-white dark:bg-[#1a242f] rounded-xl p-6 border border-[#e8edf3] dark:border-gray-800 shadow-sm group">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-lg font-bold">About</h3>
-                            {isMe && (
-                                <button className="text-primary opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <span className="material-symbols-outlined text-lg">edit</span>
-                                </button>
-                            )}
-                        </div>
-                        <div className="space-y-4">
-                            <div className="flex items-start gap-3">
-                                <span className="material-symbols-outlined text-gray-500">info</span>
-                                <div className="flex-1">
-                                    <p className="text-sm font-semibold">Bio</p>
-                                    {isEditing ? (
-                                        <div className="mt-2 space-y-2">
-                                            <textarea
-                                                className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary text-black"
-                                                value={about}
-                                                onChange={(e) => setAbout(e.target.value)}
-                                                rows={4}
-                                            />
-                                            <button
-                                                className="w-full py-1 bg-primary text-white text-xs font-bold rounded"
-                                                onClick={onSave}
-                                                disabled={isSaving}
-                                            >
-                                                {isSaving ? 'Saving...' : 'Save Bio'}
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                                            {profile.about || 'No bio yet.'}
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="flex items-start gap-3">
-                                <span className="material-symbols-outlined text-gray-500">school</span>
-                                <div>
-                                    <p className="text-sm font-semibold">Major</p>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">{profile.headline || 'Not specified'}</p>
-                                </div>
-                            </div>
-                            <div className="flex items-start gap-3">
-                                <span className="material-symbols-outlined text-gray-500">calendar_today</span>
-                                <div>
-                                    <p className="text-sm font-semibold">Class of</p>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">May 2025</p>
-                                </div>
-                            </div>
-                            <div className="flex items-start gap-3">
-                                <span className="material-symbols-outlined text-gray-500">groups</span>
-                                <div>
-                                    <p className="text-sm font-semibold">Bodies</p>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">Coding Body, Hackathon Team</p>
-                                </div>
-                            </div>
-                        </div>
+            {/* Right Column: Events & Networking + Post Feed */}
+            <div className="lg:col-span-8 space-y-8">
+                {/* Going to Events (Horizontal) */}
+                <section>
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-xl font-bold flex items-center gap-2 text-white">
+                            <span className="material-symbols-outlined text-primary">event_upcoming</span>
+                            Going to Events
+                        </h3>
                     </div>
+                    <div className="flex gap-4 overflow-x-auto pb-4 hide-scrollbar snap-x">
+                        {(goingEvents || []).map((event: Event) => (
+                            <div key={event.id} onClick={() => navigate(`/events/${event.id}`)} className="min-w-[280px] bg-white dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden snap-start group cursor-pointer hover:border-primary/50 transition-all shrink-0">
+                                <div className="h-32 relative bg-slate-800 flex items-center justify-center">
+                                    <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCPbVLc8ocKZx60H0tKB9fdIS470y5dhurRcbKDyC4VftctVYWfM66hO0LJrz2VWW8ymA-7F8V3HaXBGfNO0Y1ZVj-pJdTatx7O9hmjMuScuV23wEYll7r8HeoNNEaJ4kiBBERnd4sNILwIr8k3loN6i33eWaWxjjNHfSMhxNOMEOCNTNnquQO3A17p9fucLRuBAssXa7Cerl4oaazajFYp59AFs3Eq2i-YG53_lKgzDlwswgcnB57aSjwT4tJ-2-hNZh2D4iba8y8" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" alt={event.title} />
+                                    <div className="absolute top-3 left-3 bg-white/90 dark:bg-black/80 backdrop-blur-md rounded-lg px-2 py-1 text-center min-w-[40px]">
+                                        <p className="text-[10px] uppercase font-bold text-primary leading-none">{new Date(event.start_time).toLocaleString('default', { month: 'short' })}</p>
+                                        <p className="text-lg font-bold leading-tight text-white">{new Date(event.start_time).getDate()}</p>
+                                    </div>
+                                </div>
+                                <div className="p-4">
+                                    <h4 className="font-bold text-sm mb-1 truncate text-white">{event.title}</h4>
+                                    <p className="text-xs text-slate-500 mb-4 flex items-center gap-1">
+                                        <span className="material-symbols-outlined text-xs">location_on</span>
+                                        {event.location_name}
+                                    </p>
+                                    <button className="w-full py-2 bg-slate-100 dark:bg-white/5 hover:bg-primary hover:text-white rounded-lg text-xs font-bold transition-all text-slate-300">Join Event</button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </section>
 
-                    <div className="bg-white dark:bg-[#1a242f] rounded-xl p-6 border border-[#e8edf3] dark:border-gray-800 shadow-sm">
-                        <h3 className="text-lg font-bold mb-4">Photos</h3>
-                        <div className="grid grid-cols-3 gap-2 rounded-lg overflow-hidden">
-                            <div className="aspect-square bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400">
-                                <span className="material-symbols-outlined">image</span>
-                            </div>
-                            <div className="aspect-square bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400">
-                                <span className="material-symbols-outlined">image</span>
-                            </div>
-                            <div className="aspect-square bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400">
-                                <span className="material-symbols-outlined">image</span>
-                            </div>
-                            <div className="aspect-square bg-gray-200 flex items-center justify-center bg-[#e8edf3] dark:bg-gray-800 text-primary font-bold cursor-pointer hover:bg-gray-200 transition-colors">
-                                +0
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* Past Events */}
+                    <section>
+                        <h3 className="font-bold mb-4 flex items-center gap-2 text-white">
+                            <span className="material-symbols-outlined text-slate-500">history</span>
+                            Past Events
+                        </h3>
+                        <div className="space-y-3">
+                            <div className="bg-white dark:bg-white/5 p-3 rounded-lg border border-slate-200 dark:border-white/10 flex gap-3 group hover:bg-slate-50 dark:hover:bg-white/10 transition-colors cursor-pointer text-white">
+                                <div className="w-12 h-12 bg-primary/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <span className="material-symbols-outlined text-primary">emoji_events</span>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-bold truncate">Inter-Hostel Cricket Finale</p>
+                                    <p className="text-xs text-slate-500">Winner • Sept 2023</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    </section>
+
+                    {/* Friends/Connections */}
+                    <section>
+                        <div className="flex justify-between items-center mb-4 text-white">
+                            <h3 className="font-bold flex items-center gap-2">
+                                <span className="material-symbols-outlined text-slate-500">group</span>
+                                Friends
+                            </h3>
+                            <p className="text-xs text-slate-500">1,240 Total</p>
+                        </div>
+                        <div className="grid grid-cols-4 gap-4">
+                            <div className="flex flex-col items-center gap-1 group cursor-pointer">
+                                <img className="w-12 h-12 rounded-full border-2 border-transparent group-hover:border-primary transition-all" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB6BvIVOVr3kop8dh8p8IqKoMUP-HGwQozcFasm162EYMT-0ycSjymLEU_ScL-jLYsC_PCiVXprZW3NcjTaRVHqPgKhWo-7STCDVfR6R-ZNVzr0Z7OSWvhABVJpyceCyrkRo3UCEpPGM82dU6OY0Ia9jS1MmuGFsWZobkvygfSxhpPqag3lFMeaRWZlUd0kSbacTN4-mVInpvjaJtMK64zu07wEI2WDjOdRWd4bPbl-gsZhHRksTINf8T9rE9fuB6_EM1Mg3VCMQ4k" alt="Sarah" />
+                                <p className="text-[10px] font-bold text-slate-300">Sarah J.</p>
+                            </div>
+                            <div className="flex flex-col items-center gap-1 group cursor-pointer">
+                                <img className="w-12 h-12 rounded-full border-2 border-transparent group-hover:border-primary transition-all" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBVIph_1nfdqIQ4NB9hiBPttrSaYc_fNS5Sa0_jh57_NmOTWvDEoBkzw41A4sAupNYeKPzHQVqaHFWz36ePEVBmtU1q8vPffGn07IsXZdzvfpay9IYR_hahaV1eFPU9sF3tLeXWtgAiHPADW09OSXSv73kxGEG-FykltxjvLumJnpKyF_0fTXHXxxh9_ZOWVntcZ6APvyBHlOPyjNmUbn0UkzkYFbYTRKODtOWYGXCswsNdtLXCAReJyDfsCAVDMJBy5OOqsmvahEA" alt="Mike" />
+                                <p className="text-[10px] font-bold text-slate-300">Mike R.</p>
+                            </div>
+                            <div className="flex flex-col items-center gap-1 group cursor-pointer">
+                                <img className="w-12 h-12 rounded-full border-2 border-transparent group-hover:border-primary transition-all" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC9bjGIYvuv1FrmCB6dv4O5SbZNJwyiEW86KJghlOJ2FPBVC8hrMXm8zzka-hw5BTn5VJ-cUfscj8HeTQIxPharYND9b81CKvFL0IezMxY3Xcp4QjBW2OqV5c0THYTD4eu3Qen4FXWaBxzXw77Fhni72156V7fIzHSU4zk_Nb9ono24xmLS52ACjsKiutF9MDHBPdzA0hsx8muc882N6RaKsIEJRtLb1xbHRQ0AI-6ETXpVg_D9hLWQFhmsLD3TT0cxAKN877ff5A8" alt="Priya" />
+                                <p className="text-[10px] font-bold text-slate-300">Priya K.</p>
+                            </div>
+                            <div className="flex flex-col items-center gap-1 group cursor-pointer" onClick={() => navigate('/connections')}>
+                                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-all">
+                                    <span className="material-symbols-outlined text-primary text-xl">add</span>
+                                </div>
+                                <p className="text-[10px] font-bold text-slate-300">More</p>
+                            </div>
+                        </div>
+                    </section>
                 </div>
 
-                {/* Right Column: Post Feed */}
-                <div className="lg:col-span-2 space-y-6">
-                    {/* Create Post Shortcut */}
-                    {isMe && (
-                        <div className="bg-white dark:bg-[#1a242f] rounded-xl p-4 border border-[#e8edf3] dark:border-gray-800 shadow-sm flex gap-4">
-                            <div className="size-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold shrink-0">
-                                {profile.first_name?.[0]}
-                            </div>
-                            <button className="flex-1 bg-background-light dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-left px-4 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-sm">
-                                What's on your mind, {profile.first_name}?
-                            </button>
-                            <div className="flex gap-1">
-                                <button className="p-2 text-gray-500 hover:text-primary transition-colors"><span className="material-symbols-outlined">image</span></button>
-                                <button className="p-2 text-gray-500 hover:text-primary transition-colors"><span className="material-symbols-outlined">event</span></button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Posts */}
-                    <div className="space-y-4">
+                {/* Restore Post Feed */}
+                <section className="pt-8 border-t border-white/5">
+                    <h3 className="text-xl font-bold mb-6 text-white">Posts</h3>
+                    <div className="space-y-6">
                         {isLoadingPosts ? (
-                            <div className="text-center py-10 text-gray-500">Loading posts...</div>
+                            <div className="text-center py-10 text-slate-500">Loading posts...</div>
                         ) : posts.length === 0 ? (
-                            <div className="bg-white dark:bg-[#1a242f] rounded-xl p-8 border border-[#e8edf3] dark:border-gray-800 text-center text-gray-500">
-                                No posts yet.
-                            </div>
+                            <p className="text-slate-500 italic">No posts yet.</p>
                         ) : (
                             posts.map(post => (
                                 <PostCard
                                     key={post.id}
                                     post={post}
                                     onLike={() => onLikeToggle(post)}
-                                    onCommentAdded={onCommentAdded}
+                                    onCommentAdded={() => {}}
                                 />
                             ))
                         )}
                     </div>
-
-                    {posts.length > 0 && (
-                        <div className="flex justify-center py-4">
-                            <button className="text-primary font-semibold flex items-center gap-2 hover:underline">
-                                View older posts
-                                <span className="material-symbols-outlined">expand_more</span>
-                            </button>
-                        </div>
-                    )}
-                </div>
+                </section>
             </div>
-
-            {/* Simple Footer */}
-            <footer className="mt-12 py-8 border-t border-[#e8edf3] dark:border-gray-800 text-gray-500 text-sm flex flex-col md:flex-row justify-between items-center gap-4">
-                <p>© 2024 CampusConnect Inc.</p>
-                <div className="flex gap-6">
-                    <a className="hover:text-primary" href="#">Privacy Policy</a>
-                    <a className="hover:text-primary" href="#">Terms of Service</a>
-                    <a className="hover:text-primary" href="#">Campus Guidelines</a>
-                </div>
-            </footer>
-        </main>
+        </div>
     );
 }

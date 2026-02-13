@@ -1,12 +1,12 @@
 @import "tailwindcss";
 
 @theme {
-    --font-sans: 'Lexend', system-ui, sans-serif;
-    --font-display: 'Lexend', system-ui, sans-serif;
+    --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+    --font-display: 'Plus Jakarta Sans', system-ui, sans-serif;
 
-    --color-primary: #1d73c9;
-    --color-background-light: #f6f7f8;
-    --color-background-dark: #111921;
+    --color-primary: #8c25f4;
+    --color-background-light: #f7f5f8;
+    --color-background-dark: #191022;
 
     --radius-DEFAULT: 0.25rem;
     --radius-lg: 0.5rem;
@@ -16,7 +16,7 @@
 
 @layer base {
     body {
-        @apply bg-background-light dark:bg-background-dark text-gray-900 dark:text-gray-100 font-sans antialiased;
+        @apply bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-sans antialiased;
     }
 
     .material-symbols-outlined {
@@ -28,5 +28,21 @@
 
     .filled-icon {
         font-variation-settings: 'FILL' 1;
+    }
+
+    .glass-effect {
+        @apply bg-[#191022]/70 backdrop-blur-xl border border-[#8c25f4]/20;
+    }
+
+    .hide-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+    .hide-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+
+    .active-glow {
+        box-shadow: 0 0 10px rgba(140, 37, 244, 0.4);
     }
 }
