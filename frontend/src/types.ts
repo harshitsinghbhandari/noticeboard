@@ -164,4 +164,6 @@ export interface GroupMessage {
     sender_first_name?: string;
     sender_last_name?: string;
     read_at?: string;
+    is_organizer?: boolean;
+    isOrganizer?: boolean; // backend uses both or depends on JSON conversion
 }

@@ -368,13 +368,21 @@ function MessageBubble({ message, isGroup }: { message: Message | GroupMessage, 
   }
 
   const isMe = message.sender_id === myId;
+  const isOrganizer = (message as GroupMessage).is_organizer || (message as GroupMessage).isOrganizer;
 
   return (
     <div className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-      <div className={`max-w-[70%] p-3 rounded-lg ${isMe ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-900'}`}>
+      <div className={`max-w-[70%] p-3 rounded-lg ${
+        isMe
+          ? 'bg-blue-600 text-white'
+          : isOrganizer
+            ? 'bg-amber-50 border border-amber-200 text-gray-900'
+            : 'bg-gray-100 text-gray-900'
+      }`}>
         {isGroup && !isMe && (
-          <p className="text-xs font-bold text-gray-500 mb-1">
+          <p className={`text-xs font-bold mb-1 ${isOrganizer ? 'text-amber-700' : 'text-gray-500'}`}>
             {message.sender_first_name} {message.sender_last_name}
+            {isOrganizer && <span className="ml-1 px-1 bg-amber-200 text-amber-800 rounded text-[9px] uppercase">Organizer</span>}
           </p>
         )}
         {/* @ts-ignore */}
