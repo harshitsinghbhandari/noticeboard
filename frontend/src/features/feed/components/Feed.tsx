@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import type { FeedItem } from '../../../types';
 import PostCard from './PostCard';
-import { Button } from '../../../components/ui/Button';
 import { useFeed } from '../hooks/useFeed';
 import { usePostActions } from '../hooks/usePostActions';
+import HappeningSoon from './HappeningSoon';
+import SocialProof from './SocialProof';
 
 export default function Feed() {
     const {
@@ -12,8 +13,6 @@ export default function Feed() {
         loading,
         loadingMore,
         hasMore,
-        error,
-        fetchFeed,
         loadMore
     } = useFeed();
 
@@ -22,21 +21,15 @@ export default function Feed() {
     };
 
     const {
-        posting,
-        handleCreatePost,
         handleLikeToggle
     } = usePostActions(onPostAdded);
-
-    // New Post State
-    const [newPostContent, setNewPostContent] = useState('');
-    const [postVisibility, setPostVisibility] = useState<'public' | 'connections_only'>('public');
 
     const observerTarget = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const observer = new IntersectionObserver(
             entries => {
-                if (entries[0].isIntersecting) {
+                if (entries[0].isIntersecting && hasMore && !loadingMore) {
                     loadMore();
                 }
             },
@@ -53,17 +46,7 @@ export default function Feed() {
                 observer.unobserve(currentTarget);
             }
         };
-    }, [loadMore]);
-
-    const onCreatePostSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        try {
-            await handleCreatePost(newPostContent, postVisibility);
-            setNewPostContent('');
-        } catch (err) {
-            // Error handled in hook
-        }
-    };
+    }, [loadMore, hasMore, loadingMore]);
 
     const onLikeToggle = (postId: string, currentHasLiked: boolean) => {
         handleLikeToggle(postId, currentHasLiked, (newHasLiked) => {
@@ -92,82 +75,55 @@ export default function Feed() {
         }));
     };
 
-    if (loading && feedItems.length === 0) return <div className="p-4">Loading feed...</div>;
-
-    if (error && feedItems.length === 0) {
-        return (
-            <div className="p-4 text-center text-red-500">
-                <p>{error}</p>
-                <Button onClick={() => fetchFeed()} className="mt-4">
-                    Retry
-                </Button>
-            </div>
-        );
-    }
+    if (loading && feedItems.length === 0) return <div className="p-4 text-white">Loading CampusPulse...</div>;
 
     return (
-        <div className="max-w-2xl mx-auto p-4 animate-fade-in relative">
-            {/* Create Post Widget */}
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 mb-6">
-                <form onSubmit={onCreatePostSubmit}>
-                    <div className="flex gap-4">
-                        <div className="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-700 flex-shrink-0 animate-pulse-slow"></div>
-                        <div className="flex-grow">
-                            <textarea
-                                className="w-full bg-transparent border-none resize-none focus:ring-0 text-lg placeholder-gray-400 dark:text-gray-100"
-                                placeholder="Start a post..."
-                                rows={2}
-                                value={newPostContent}
-                                onChange={(e) => setNewPostContent(e.target.value)}
+        <div className="space-y-10 animate-fade-in pb-20">
+            {/* Section 1: Happening Soon */}
+            <HappeningSoon />
+
+            {/* Section 2: Your People Are Going */}
+            <SocialProof />
+
+            {/* Main Feed: For You */}
+            <section>
+                <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-bold text-white">Recommended For You</h2>
+                    <div className="flex items-center gap-2 text-slate-400">
+                        <span className="material-symbols-outlined !text-base">sort</span>
+                        <span className="text-xs font-semibold">Latest First</span>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-6">
+                    {feedItems.length === 0 ? (
+                        <div className="text-center py-20 bg-white/5 rounded-2xl border border-white/5">
+                            <p className="text-slate-400">No events found in your pulse.</p>
+                        </div>
+                    ) : (
+                        feedItems.map(item => (
+                            <PostCard
+                                key={item.id}
+                                post={item}
+                                onLike={() => onLikeToggle(item.id, item.has_liked)}
+                                onCommentAdded={handleCommentAdded}
                             />
-                        </div>
-                    </div>
-                    <div className="flex justify-between items-center mt-4 pt-3 border-t border-gray-100 dark:border-gray-700">
-                        <div className="flex gap-2">
-                            <select
-                                value={postVisibility}
-                                onChange={(e) => setPostVisibility(e.target.value as 'public' | 'connections_only')}
-                                className="text-sm border-none bg-gray-50 dark:bg-gray-900 rounded-lg px-2 py-1 text-gray-600 dark:text-gray-300 focus:ring-0 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                            >
-                                <option value="public">🌏 Public</option>
-                                <option value="connections_only">👥 Connections</option>
-                            </select>
-                        </div>
-                        <Button type="submit" disabled={!newPostContent.trim() || posting}>
-                            {posting ? 'Posting...' : 'Post'}
-                        </Button>
-                    </div>
-                </form>
-            </div>
-
-            {error && (
-                <div className="bg-red-50 text-red-600 p-3 rounded mb-4">
-                    {error}
+                        ))
+                    )}
                 </div>
-            )}
 
-            <div className="space-y-4">
-                {feedItems.length === 0 ? (
-                    <div className="text-center py-10 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-                        <p>No posts yet. Be the first to post!</p>
+                {hasMore && (
+                    <div ref={observerTarget} className="py-10 flex justify-center">
+                        <button
+                            onClick={() => loadMore()}
+                            disabled={loadingMore}
+                            className="px-8 py-2.5 border border-primary/30 text-primary font-bold rounded-full hover:bg-primary/5 transition-colors disabled:opacity-50"
+                        >
+                            {loadingMore ? 'Pulse checking...' : 'Load More Events'}
+                        </button>
                     </div>
-                ) : (
-                    feedItems.map(item => (
-                        <PostCard
-                            key={item.id}
-                            post={item}
-                            onLike={() => onLikeToggle(item.id, item.has_liked)}
-                            onCommentAdded={handleCommentAdded}
-                        />
-                    ))
                 )}
-            </div>
-
-            {hasMore && feedItems.length > 0 && !error && (
-                <div ref={observerTarget} className="p-4 text-center text-gray-500">
-                    {loadingMore ? 'Loading more...' : 'Load more'}
-                </div>
-            )}
+            </section>
         </div>
     );
 }

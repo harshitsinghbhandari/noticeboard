@@ -1,8 +1,5 @@
-import { useState } from 'react';
-import type { Comment, FeedItem, Post } from '../../../types';
-import { timeAgo } from '../../../utils/timeAgo';
-import * as feedApi from '../api/feed';
-import { usePostActions } from '../hooks/usePostActions';
+import { Link } from 'react-router-dom';
+import type { FeedItem, Post } from '../../../types';
 
 interface PostCardProps {
     post: FeedItem | Post;
@@ -10,194 +7,68 @@ interface PostCardProps {
     onCommentAdded: (postId: string) => void;
 }
 
-export default function PostCard({ post, onLike, onCommentAdded }: PostCardProps) {
-    const [comments, setComments] = useState<Comment[]>([]);
-    const [isExpanded, setIsExpanded] = useState(false);
-    const [newComment, setNewComment] = useState('');
-    const [isCommenting, setIsCommenting] = useState(false);
-    const [areCommentsLoaded, setAreCommentsLoaded] = useState(false);
+export default function PostCard({ post, onLike }: PostCardProps) {
+    const isOpening = post.type === 'opening';
 
-    const { handleAddComment } = usePostActions();
-
-    const toggleComments = async () => {
-        if (isExpanded) {
-            setIsExpanded(false);
-        } else {
-            setIsExpanded(true);
-            if (!areCommentsLoaded) {
-                fetchComments();
-            }
-        }
-    };
-
-    const fetchComments = async () => {
-        try {
-            const res = await feedApi.getComments(post.id);
-            setComments(res.data);
-            setAreCommentsLoaded(true);
-        } catch (error) {
-            console.error('Failed to fetch comments', error);
-        }
-    };
-
-    const onCommentSubmit = async () => {
-        if (!newComment.trim()) return;
-        setIsCommenting(true);
-        try {
-            await handleAddComment(post.id, newComment);
-            setNewComment('');
-            fetchComments();
-            onCommentAdded(post.id);
-        } catch (error) {
-            // Error handled in hook/locally
-        } finally {
-            setIsCommenting(false);
-        }
-    };
-
-    if (post.type === 'opening') {
-        return (
-            <article className="bg-white dark:bg-[#1a242f] rounded-xl shadow-sm border border-[#e8edf3] dark:border-gray-800 overflow-hidden hover:border-primary/20 transition-all">
-                <div className="p-5">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="h-11 w-11 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold overflow-hidden">
-                            <span className="material-symbols-outlined">work</span>
-                        </div>
-                        <div>
-                            <h3 className="text-sm font-bold text-gray-900 dark:text-white leading-tight">
-                                Opportunity: {post.title}
-                            </h3>
-                            <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-                                <span className="text-primary font-semibold">{post.body_name}</span>
-                                <span>•</span>
-                                <span>{timeAgo(post.created_at)}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="text-gray-900 dark:text-gray-200 text-sm leading-relaxed mb-4 whitespace-pre-wrap">
-                        <p>{post.content}</p>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                            <span className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-xs">📍 {post.location_city}, {post.location_country}</span>
-                            <span className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-xs">💼 {post.job_type}</span>
-                            <span className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-xs">🎓 {post.experience_level}</span>
-                        </div>
-                    </div>
-                    <button className="w-full py-2 bg-primary text-white rounded-lg font-bold text-sm">Apply Now</button>
-                </div>
-            </article>
-        );
-    }
+    // Mock images if none provided in post data
+    const imageUrl = isOpening
+        ? 'https://lh3.googleusercontent.com/aida-public/AB6AXuAXBZIxm9BikQYQCV0BzJUepgW5b_4diHE86e644UX-goe_tmbdjfiLqHPeSzHX0B0sTIK8fU5hrundhNhua_XG7AKtv9_cgMSpFoSA92N5elgA82UGTUL9T5NVzF1XB_ikRW0EuDcn328cdp5YMNUS88rvUiNa1qAHdbHQzFcSd26KrFNg8iTh4jVVV95gK15FyOIYSXNOIozAxL94I0IJpD9hmIYsLtwNWrsAKAA5FeVzrTYufqAf_a0ROLXzpoyDRHBTISkmFTk'
+        : 'https://lh3.googleusercontent.com/aida-public/AB6AXuCs2W7_qcWK4Uu0izaQ0ZcjFQBrljxuzj72hzr9wdsdo952hGs45ka-6_AAph-epLUlsGrjaxTrn5pSJ935_4vWsXVmZMy-tdSgFjpGQGLBlA8EpGriYnE9n8SQezC0n0HkzcIieMaIn6LrVkKSnDvw8vMoQyV_A52GIY20vnlfySu81q1EJf9caKwc-Pyif4cP8atugsQAaV_G-d0JqjHROtGs7hQMot-SfrquL2g1DhskukPZxZDsGdIlEq6ne0ZOc5c9qun69NI';
 
     return (
-        <article className="bg-white dark:bg-[#1a242f] rounded-xl shadow-sm border border-[#e8edf3] dark:border-gray-800 overflow-hidden hover:border-primary/20 transition-all">
-            <div className="p-5">
-                {/* Post Header */}
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="h-11 w-11 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold overflow-hidden">
-                        {post.body_name ? post.body_name[0] : post.author_first_name?.[0]}
-                    </div>
-                    <div>
-                        <h3 className="text-sm font-bold text-gray-900 dark:text-white leading-tight">
-                            {post.body_name ? post.body_name : `${post.author_first_name} ${post.author_last_name}`}
-                        </h3>
-                        <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-                            <span>{post.body_name ? 'Organization' : (post.author_headline || 'Student')}</span>
-                            <span>•</span>
-                            <span>{timeAgo(post.created_at)}</span>
-                        </div>
-                    </div>
-                    <button className="ml-auto text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 p-1 rounded">
-                        <span className="material-symbols-outlined">more_horiz</span>
-                    </button>
+        <div className="group bg-white/5 rounded-2xl overflow-hidden border border-white/5 hover:border-primary/20 transition-all">
+            <div className="relative aspect-[21/9] md:aspect-[3/1] bg-slate-800">
+                <img
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    src={imageUrl}
+                    alt={post.content.substring(0, 20)}
+                />
+                <div className="absolute top-4 right-4 px-3 py-1 bg-black/40 backdrop-blur-md rounded-full text-white text-[10px] font-bold uppercase tracking-wider">
+                    {isOpening ? 'Opening' : 'Campus Event'}
                 </div>
-
-                {/* Post Body */}
-                <div className="text-gray-900 dark:text-gray-200 text-sm leading-relaxed mb-4 whitespace-pre-wrap">
-                    <p>{post.content}</p>
-                </div>
-
-                {/* Post Meta Info */}
-                <div className="flex items-center justify-between py-3 border-y border-gray-100 dark:border-gray-800 mb-2">
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-1.5">
-                            <div className="flex -space-x-2">
-                                <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center ring-2 ring-white dark:ring-[#1a242f]">
-                                    <span className="material-symbols-outlined text-[12px] text-white filled-icon">thumb_up</span>
-                                </div>
-                            </div>
-                            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                                {post.likes_count} likes
-                            </span>
-                        </div>
-                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                            {post.comments_count} comments
-                        </span>
-                    </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={() => onLike(post)}
-                        className={`flex-1 py-2 flex items-center justify-center gap-2 rounded-lg font-semibold text-sm transition-colors ${post.has_liked
-                            ? 'text-primary bg-primary/5 hover:bg-primary/10'
-                            : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
-                            }`}
-                    >
-                        <span className={`material-symbols-outlined text-xl ${post.has_liked ? 'filled-icon' : ''}`}>
-                            thumb_up
-                        </span>
-                        <span>{post.has_liked ? 'Liked' : 'Like'}</span>
-                    </button>
-                    <button
-                        onClick={toggleComments}
-                        className={`flex-1 py-2 flex items-center justify-center gap-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg font-semibold text-sm transition-colors ${isExpanded ? 'bg-gray-100 dark:bg-gray-800' : ''
-                            }`}
-                    >
-                        <span className="material-symbols-outlined text-xl">chat_bubble</span>
-                        <span>Comment</span>
-                    </button>
-                </div>
-
-                {/* Comments Section */}
-                {isExpanded && (
-                    <div className="mt-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
-                        <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                            {comments.map((comment) => (
-                                <div key={comment.id} className="py-3 flex gap-3">
-                                    <div className="h-8 w-8 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs overflow-hidden">
-                                        {comment.author_first_name?.[0]}
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className="text-xs font-bold">{comment.author_first_name} {comment.author_last_name}</span>
-                                            <span className="text-[10px] text-gray-400">{timeAgo(comment.created_at)}</span>
-                                        </div>
-                                        <p className="text-sm text-gray-600 dark:text-gray-300">{comment.content}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="flex gap-2 pt-2">
-                            <input
-                                className="flex-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                                placeholder="Add a comment..."
-                                value={newComment}
-                                onChange={(e) => setNewComment(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && onCommentSubmit()}
-                            />
-                            <button
-                                className="px-4 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary/90 disabled:opacity-50"
-                                onClick={onCommentSubmit}
-                                disabled={isCommenting || !newComment.trim()}
-                            >
-                                {isCommenting ? '...' : 'Post'}
-                            </button>
-                        </div>
-                    </div>
-                )}
             </div>
-        </article>
+            <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="space-y-2">
+                    <div className="flex items-center gap-4 text-xs font-semibold text-slate-400">
+                        <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined !text-sm">calendar_today</span>
+                            {new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                        <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined !text-sm">location_on</span>
+                            {isOpening ? `${(post as any).location_city}, ${(post as any).location_country}` : 'Campus Grounds'}
+                        </span>
+                    </div>
+                    <Link to={`/posts/${post.id}`} className="block">
+                        <h3 className="text-2xl font-bold text-white group-hover:text-primary transition-colors line-clamp-1">
+                            {isOpening ? (post as any).title : (post.content.split('\n')[0].substring(0, 50) || 'Untitled Pulse')}
+                        </h3>
+                    </Link>
+                    <div className="flex items-center gap-3">
+                        <div className="flex -space-x-2">
+                            <div className="w-6 h-6 rounded-full bg-slate-600 border border-background-dark"></div>
+                            <div className="w-6 h-6 rounded-full bg-slate-500 border border-background-dark"></div>
+                            <div className="w-6 h-6 rounded-full bg-slate-400 border border-background-dark"></div>
+                        </div>
+                        <p className="text-sm font-medium text-slate-300">
+                            <span className="text-primary font-bold">
+                                {isOpening ? 'Many' : (Number(post.likes_count) || 0)}
+                            </span> {isOpening ? 'applying' : 'interested'}
+                        </p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => isOpening ? null : onLike(post)}
+                        className={`px-6 py-3 ${post.has_liked ? 'bg-white/10 text-primary border border-primary/30' : 'bg-primary text-white shadow-primary/20 shadow-lg'} hover:opacity-90 font-bold rounded-xl transition-all active:scale-95 whitespace-nowrap`}
+                    >
+                        {isOpening ? 'Apply Now' : (post.has_liked ? 'Interested' : 'RSVP Now')}
+                    </button>
+                    <button className="p-3 bg-white/5 hover:bg-white/10 text-slate-400 rounded-xl transition-all">
+                        <span className="material-symbols-outlined">share</span>
+                    </button>
+                </div>
+            </div>
+        </div>
     );
 }

@@ -9,7 +9,7 @@ interface EventCardProps {
     currentUserId?: string;
 }
 
-export default function EventCard({ event, onJoin, currentUserId }: EventCardProps) {
+export default function EventCard({ event, onJoin }: EventCardProps) {
     const [loading, setLoading] = useState(false);
 
     const handleJoin = async () => {

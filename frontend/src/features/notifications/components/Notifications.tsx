@@ -20,19 +20,10 @@ export default function Notifications({ onNotificationClick }: NotificationsProp
 
     const getIcon = (type: string) => {
         switch (type) {
-            case 'like': return <span className="material-symbols-outlined text-[12px] font-bold">favorite</span>;
-            case 'comment': return <span className="material-symbols-outlined text-[12px] font-bold">chat_bubble</span>;
-            case 'connection': return <span className="material-symbols-outlined text-[12px] font-bold">person_add</span>;
-            default: return <span className="material-symbols-outlined text-[12px] font-bold">notifications</span>;
-        }
-    };
-
-    const getIconBg = (type: string) => {
-        switch (type) {
-            case 'like': return 'bg-red-500';
-            case 'comment': return 'bg-green-500';
-            case 'connection': return 'bg-primary';
-            default: return 'bg-slate-500';
+            case 'like': return 'local_fire_department';
+            case 'comment': return 'chat_bubble';
+            case 'connection': return 'person_add';
+            default: return 'notifications';
         }
     };
 
@@ -41,96 +32,83 @@ export default function Notifications({ onNotificationClick }: NotificationsProp
         : notifications.filter(n => !n.read_at);
 
     return (
-        <div className="layout-content-container flex flex-col max-w-[800px] flex-1 mx-auto">
-            {/* Notification Header */}
-            <div className="flex flex-wrap justify-between items-end gap-4 mb-6">
+        <div className="max-w-[800px] mx-auto space-y-8 animate-fade-in pb-20">
+            <header className="flex justify-between items-end">
                 <div>
-                    <h1 className="text-slate-900 dark:text-white text-3xl font-extrabold tracking-tight">Notifications</h1>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Stay updated with your campus activity</p>
+                    <h1 className="text-3xl font-bold text-white tracking-tight">Pulse Notifications</h1>
+                    <p className="text-slate-400">Stay in the rhythm of your campus.</p>
                 </div>
                 <button
-                    className="flex items-center gap-2 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg text-sm font-semibold transition-colors"
+                    className="p-2 text-primary hover:bg-primary/10 rounded-xl transition-all"
                     onClick={() => fetchNotifications()}
                 >
-                    <span className="material-symbols-outlined text-sm">refresh</span>
-                    Refresh
+                    <span className="material-symbols-outlined">refresh</span>
                 </button>
-            </div>
+            </header>
 
-            {/* Filters */}
-            <div className="flex border-b border-slate-200 dark:border-slate-800 mb-2">
+            <div className="flex bg-white/5 p-1 rounded-xl w-fit">
                 <button
-                    className={`px-6 py-3 border-b-2 text-sm font-bold transition-all ${filter === 'all' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                    className={`px-6 py-2 text-xs font-bold rounded-lg transition-all ${filter === 'all' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-400 hover:text-white'}`}
                     onClick={() => setFilter('all')}
                 >
-                    All
+                    All Activities
                 </button>
                 <button
-                    className={`px-6 py-3 border-b-2 text-sm font-bold transition-all ${filter === 'unread' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                    className={`px-6 py-2 text-xs font-bold rounded-lg transition-all ${filter === 'unread' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-400 hover:text-white'}`}
                     onClick={() => setFilter('unread')}
                 >
-                    Unread
+                    Unread Pulse
                 </button>
             </div>
 
-            {/* Notifications List */}
-            <div className="flex flex-col gap-1">
+            <div className="space-y-3">
                 {isLoading ? (
-                    <div className="py-10 text-center text-slate-400 animate-pulse">Loading notifications...</div>
+                    <div className="py-20 text-center text-slate-500 animate-pulse">Checking your pulse...</div>
                 ) : filteredNotifications.length === 0 ? (
-                    <div className="py-20 text-center text-slate-400 italic">
-                        {filter === 'unread' ? 'No unread notifications' : 'No notifications yet'}
+                    <div className="py-20 text-center bg-white/5 border border-dashed border-white/10 rounded-2xl">
+                        <p className="text-slate-500 italic">
+                            {filter === 'unread' ? 'No unread pulses found.' : 'Your pulse is steady. No notifications.'}
+                        </p>
                     </div>
                 ) : (
                     filteredNotifications.map((n) => (
                         <div
                             key={n.id}
                             onClick={() => handleClick(n)}
-                            className={`group flex items-center gap-4 p-4 rounded-xl transition-all cursor-pointer relative ${!n.read_at
-                                    ? 'bg-primary/5 hover:bg-primary/10 dark:bg-primary/10 dark:hover:bg-primary/20'
-                                    : 'bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800'
+                            className={`group flex items-center gap-4 p-4 rounded-2xl transition-all cursor-pointer border ${!n.read_at
+                                    ? 'bg-primary/10 border-primary/20 hover:bg-primary/15'
+                                    : 'bg-white/5 border-transparent hover:bg-white/10'
                                 }`}
                         >
-                            {!n.read_at && (
-                                <div className="absolute left-1 top-1/2 -translate-y-1/2 w-1 h-12 bg-primary rounded-full"></div>
-                            )}
                             <div className="relative">
-                                <div className="size-12 rounded-full border-2 border-white dark:border-slate-800 bg-primary/10 flex items-center justify-center text-primary font-bold">
+                                <div className="size-12 rounded-xl bg-slate-800 border border-white/10 flex items-center justify-center text-primary font-bold text-xl">
                                     {n.actor_first_name?.[0]}
                                 </div>
-                                <div className={`absolute -bottom-1 -right-1 ${getIconBg(n.type)} text-white rounded-full size-5 flex items-center justify-center border-2 border-white dark:border-slate-800`}>
-                                    {getIcon(n.type)}
+                                <div className="absolute -top-1 -right-1 bg-primary text-white rounded-full size-5 flex items-center justify-center border-2 border-background-dark shadow-lg">
+                                    <span className="material-symbols-outlined !text-[12px] font-bold">{getIcon(n.type)}</span>
                                 </div>
                             </div>
-                            <div className="flex flex-col flex-1">
-                                <p className={`text-sm md:text-base ${!n.read_at ? 'text-slate-900 dark:text-slate-100' : 'text-slate-600 dark:text-slate-300'}`}>
-                                    <span className="font-bold">{n.actor_first_name} {n.actor_last_name}</span>
-                                    {n.type === 'like' && ' liked your post'}
-                                    {n.type === 'comment' && ' commented on your post'}
-                                    {n.type === 'connection' && ' accepted your connection request'}
+                            <div className="flex-1">
+                                <p className={`text-sm md:text-base ${!n.read_at ? 'text-white' : 'text-slate-300'}`}>
+                                    <span className="font-bold text-primary">{n.actor_first_name} {n.actor_last_name}</span>
+                                    {n.type === 'like' && ' interested in your pulse'}
+                                    {n.type === 'comment' && ' added hype to your post'}
+                                    {n.type === 'connection' && ' joined your network'}
                                 </p>
-                                <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">{timeAgo(n.created_at)}</p>
+                                <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mt-1">{timeAgo(n.created_at)}</p>
                             </div>
                             {!n.read_at && (
-                                <div className="shrink-0 flex items-center gap-2">
-                                    <span className="w-2.5 h-2.5 bg-primary rounded-full"></span>
-                                </div>
+                                <div className="w-2 h-2 bg-primary rounded-full shadow-[0_0_10px_rgba(140,37,244,0.8)]"></div>
                             )}
-                            <div className="shrink-0">
-                                <button className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <span className="material-symbols-outlined">more_horiz</span>
-                                </button>
-                            </div>
                         </div>
                     ))
                 )}
             </div>
 
-            {/* Load More Button */}
-            {filteredNotifications.length > 0 && (
-                <div className="flex justify-center mt-8 pb-12">
-                    <button className="flex items-center gap-2 px-8 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm">
-                        Load more notifications
+            {filteredNotifications.length > 10 && (
+                <div className="flex justify-center pt-6">
+                    <button className="px-8 py-2.5 border border-primary/30 text-primary font-bold rounded-full hover:bg-primary/5 transition-all text-sm">
+                        Load More Pulses
                     </button>
                 </div>
             )}

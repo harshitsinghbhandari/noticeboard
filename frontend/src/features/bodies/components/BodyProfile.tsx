@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import type { Post, Opening, BodyRole } from '../../../types';
-import { Button } from '../../../components/ui/Button';
 import PostCard from '../../feed/components/PostCard';
 import apiClient from '../../../api/client';
 import { useBodyProfile } from '../hooks/useBodyProfile';
@@ -37,19 +36,13 @@ export default function BodyProfile() {
     handleLikeToggle,
   } = usePostActions(onPostAdded);
 
-  // New Post State
   const [newPostContent, setNewPostContent] = useState('');
-
-  // Member Management State
   const [showMembers, setShowMembers] = useState(false);
   const [newMemberUserId, setNewMemberUserId] = useState('');
   const [newMemberRole, setNewMemberRole] = useState<BodyRole>('BODY_MEMBER');
   const [addingMember, setAddingMember] = useState(false);
-
-  // Tabs
   const [activeTab, setActiveTab] = useState<'posts' | 'openings' | 'events'>('posts');
 
-  // Create Event State
   const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [newEventTitle, setNewEventTitle] = useState('');
   const [newEventDesc, setNewEventDesc] = useState('');
@@ -58,7 +51,6 @@ export default function BodyProfile() {
   const [newEventEndTime, setNewEventEndTime] = useState('');
   const [newEventCapacity, setNewEventCapacity] = useState('');
 
-  // Create Opening State
   const [showCreateOpening, setShowCreateOpening] = useState(false);
   const [newOpeningTitle, setNewOpeningTitle] = useState('');
   const [newOpeningDesc, setNewOpeningDesc] = useState('');
@@ -75,10 +67,8 @@ export default function BodyProfile() {
     e.preventDefault();
     try {
       await handleCreatePost(newPostContent, 'public', id);
-    } catch (err) {
-      const error = err as { response?: { data?: { error?: string } } };
-      const errorMessage = error.response?.data?.error || 'Failed to create post';
-      alert(errorMessage);
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to create post');
     }
   };
 
@@ -144,7 +134,6 @@ export default function BodyProfile() {
       setNewOpeningLocationCountry('');
       fetchBodyData();
     } catch (err) {
-      console.error('Failed to create opening', err);
       alert('Failed to create opening');
     }
   };
@@ -153,12 +142,12 @@ export default function BodyProfile() {
     e.preventDefault();
     try {
       await createEvent({
-        bodyId: id,
+        bodyId: id!,
         title: newEventTitle,
         description: newEventDesc,
         location_name: newEventLocation,
-        latitude: 0, // Mocking for now as we don't have map picker
-        longitude: 0, // Mocking for now
+        latitude: 0,
+        longitude: 0,
         start_time: new Date(newEventStartTime).toISOString(),
         end_time: new Date(newEventEndTime).toISOString(),
         capacity: newEventCapacity ? parseInt(newEventCapacity) : null
@@ -172,13 +161,12 @@ export default function BodyProfile() {
       setNewEventCapacity('');
       fetchBodyData();
     } catch (err: any) {
-      console.error('Failed to create event', err);
       alert(err.response?.data?.error || 'Failed to create event');
     }
   };
 
-  if (loading) return <div className="p-4 text-center">Loading body...</div>;
-  if (!body) return <div className="p-4 text-center">Body not found</div>;
+  if (loading) return <div className="p-20 text-center text-white">Syncing Body Pulse...</div>;
+  if (!body) return <div className="p-20 text-center text-white">Body Heartbeat not found.</div>;
 
   const userRole = body.user_role;
   const canPost = !!userRole;
@@ -186,357 +174,399 @@ export default function BodyProfile() {
   const isAdmin = userRole === 'BODY_ADMIN';
 
   return (
-    <div className="max-w-4xl mx-auto p-4">
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700 mb-6">
-        <div className="flex justify-between items-start">
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold">{body.name}</h1>
-              {userRole && (
-                <span className="bg-primary/10 text-primary text-xs font-bold px-2 py-1 rounded-full border border-primary/20">
-                  {userRole.replace('BODY_', '')}
-                </span>
-              )}
+    <div className="space-y-8 animate-fade-in pb-24">
+      {/* Header Card */}
+      <div className="bg-white dark:bg-white/5 rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
+        <div className="h-32 md:h-48 bg-gradient-to-r from-primary to-purple-600 relative">
+            <div className="absolute -bottom-10 left-8 p-1 bg-background-dark rounded-2xl">
+                <div className="w-20 h-20 md:w-28 md:h-28 rounded-xl bg-primary flex items-center justify-center text-white font-bold text-4xl shadow-xl">
+                    {body.name[0]}
+                </div>
             </div>
-            {body.website_url && (
-              <a href={body.website_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                {body.website_url}
-              </a>
-            )}
-          </div>
-          <div className="flex gap-2">
-            {isAdmin && (
-              <Button variant="outline" onClick={() => setShowMembers(!showMembers)}>
-                {showMembers ? 'Show Posts' : 'Manage Members'}
-              </Button>
-            )}
-            <Button variant={body.is_following ? 'outline' : 'primary'} onClick={onToggleFollow}>
-              {body.is_following ? 'Unfollow' : 'Follow'}
-            </Button>
-          </div>
         </div>
-        <p className="mt-4 text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{body.description}</p>
+        <div className="pt-12 pb-8 px-8 flex flex-col md:flex-row justify-between items-start gap-6">
+            <div className="space-y-1">
+                <div className="flex items-center gap-3">
+                    <h1 className="text-3xl font-extrabold text-white">{body.name}</h1>
+                    {userRole && (
+                        <span className="bg-primary/20 text-primary text-[10px] font-bold px-2 py-1 rounded-full border border-primary/30 uppercase tracking-widest">
+                            {userRole.replace('BODY_', '')}
+                        </span>
+                    )}
+                </div>
+                <p className="text-slate-400 max-w-2xl text-sm leading-relaxed">{body.description}</p>
+                {body.website_url && (
+                    <a href={body.website_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-primary hover:underline text-xs font-bold mt-2">
+                        <span className="material-symbols-outlined text-sm">language</span>
+                        Official Pulse
+                    </a>
+                )}
+            </div>
+            <div className="flex gap-3">
+                {isAdmin && (
+                    <button
+                        onClick={() => setShowMembers(!showMembers)}
+                        className={`px-4 py-2 rounded-xl font-bold text-xs transition-all ${showMembers ? 'bg-primary text-white shadow-lg' : 'bg-white/5 text-slate-300 hover:bg-white/10'}`}
+                    >
+                        {showMembers ? 'Pulse Posts' : 'Manage Pulsars'}
+                    </button>
+                )}
+                <button
+                    onClick={onToggleFollow}
+                    className={`px-6 py-2 rounded-xl font-bold text-xs shadow-lg transition-all active:scale-95 ${body.is_following ? 'bg-white/10 text-white border border-white/20' : 'bg-primary text-white shadow-primary/20'}`}
+                >
+                    {body.is_following ? 'Unfollow Pulse' : 'Follow Pulse'}
+                </button>
+            </div>
+        </div>
       </div>
 
       {showMembers && isAdmin ? (
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-          <h2 className="text-xl font-bold mb-4">Member Management</h2>
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-8 space-y-8 animate-in slide-in-from-top-4 duration-300">
+          <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-white">Pulsar Management</h2>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{members.length} Total</span>
+          </div>
 
-          <form onSubmit={onAddMember} className="mb-6 flex gap-2">
+          <form onSubmit={onAddMember} className="flex gap-3">
             <input
               type="text"
-              placeholder="User ID"
+              placeholder="Pulsar User ID"
               value={newMemberUserId}
               onChange={e => setNewMemberUserId(e.target.value)}
-              className="flex-grow p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-black"
+              className="flex-grow p-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:ring-1 focus:ring-primary outline-none"
               required
             />
             <select
               value={newMemberRole}
               onChange={e => setNewMemberRole(e.target.value as BodyRole)}
-              className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-black"
+              className="p-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm outline-none cursor-pointer"
             >
               <option value="BODY_MEMBER">Member</option>
               <option value="BODY_MANAGER">Manager</option>
               <option value="BODY_ADMIN">Admin</option>
             </select>
-            <Button type="submit" disabled={addingMember}>Add Member</Button>
+            <button
+                type="submit"
+                disabled={addingMember}
+                className="px-6 py-3 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary/90 disabled:opacity-50 transition-all text-xs"
+            >
+                Add Pulsar
+            </button>
           </form>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             {members.map(member => (
-              <div key={member.user_id} className="flex justify-between items-center p-3 border-b dark:border-gray-700">
-                <div>
-                  <p className="font-semibold">{member.first_name} {member.last_name}</p>
-                  <p className="text-sm text-gray-500">{member.email}</p>
+              <div key={member.user_id} className="flex justify-between items-center p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors border border-transparent hover:border-white/5">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center text-primary font-bold">{member.first_name[0]}</div>
+                  <div>
+                    <p className="font-bold text-white text-sm">{member.first_name} {member.last_name}</p>
+                    <p className="text-xs text-slate-500">{member.email}</p>
+                  </div>
                 </div>
-                <div className="flex gap-2 items-center">
+                <div className="flex gap-3 items-center">
                   <select
                     value={member.role}
                     onChange={e => changeRole(member.user_id, e.target.value as BodyRole)}
-                    className="p-1 border rounded text-sm dark:bg-gray-700 text-black"
+                    className="p-2 bg-transparent text-slate-300 text-xs font-bold outline-none border-none cursor-pointer hover:text-white"
                   >
-                    <option value="BODY_MEMBER">Member</option>
-                    <option value="BODY_MANAGER">Manager</option>
-                    <option value="BODY_ADMIN">Admin</option>
+                    <option value="BODY_MEMBER" className="bg-background-dark text-white">Member</option>
+                    <option value="BODY_MANAGER" className="bg-background-dark text-white">Manager</option>
+                    <option value="BODY_ADMIN" className="bg-background-dark text-white">Admin</option>
                   </select>
-                  <Button variant="danger" size="sm" onClick={() => removeMember(member.user_id)}>Remove</Button>
+                  <button
+                    onClick={() => removeMember(member.user_id)}
+                    className="p-2 text-slate-500 hover:text-red-400 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-lg">person_remove</span>
+                  </button>
                 </div>
               </div>
             ))}
-            {members.length === 0 && <p className="text-center text-gray-500">No members found.</p>}
           </div>
         </div>
       ) : (
-        <div>
-          <div className="flex border-b border-gray-200 dark:border-gray-700 mb-6">
+        <div className="space-y-8">
+          <div className="flex bg-white/5 p-1 rounded-xl w-fit">
             <button
-              className={`py-2 px-4 font-semibold ${activeTab === 'posts' ? 'border-b-2 border-primary text-primary' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`px-8 py-2.5 text-xs font-bold rounded-lg transition-all ${activeTab === 'posts' ? 'bg-primary text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
               onClick={() => setActiveTab('posts')}
             >
-              Posts
+              Feed
             </button>
             <button
-              className={`py-2 px-4 font-semibold ${activeTab === 'openings' ? 'border-b-2 border-primary text-primary' : 'text-gray-500 hover:text-gray-700'}`}
-              onClick={() => setActiveTab('openings')}
-            >
-              Openings
-            </button>
-            <button
-              className={`py-2 px-4 font-semibold ${activeTab === 'events' ? 'border-b-2 border-primary text-primary' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`px-8 py-2.5 text-xs font-bold rounded-lg transition-all ${activeTab === 'events' ? 'bg-primary text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
               onClick={() => setActiveTab('events')}
             >
               Events
             </button>
+            <button
+              className={`px-8 py-2.5 text-xs font-bold rounded-lg transition-all ${activeTab === 'openings' ? 'bg-primary text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+              onClick={() => setActiveTab('openings')}
+            >
+              Openings
+            </button>
           </div>
 
-          {activeTab === 'posts' && (
-            <div className="max-w-3xl mx-auto">
-              <h2 className="text-xl font-bold mb-4">Latest Updates</h2>
-
-              {canPost && (
-                <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 mb-6">
-                  <form onSubmit={onCreatePost}>
-                    <div className="flex gap-4">
-                      <div className="h-10 w-10 rounded-full bg-primary/10 flex-shrink-0 flex items-center justify-center text-primary font-bold">
-                        {body.name[0]}
-                      </div>
-                      <div className="flex-grow">
-                        <textarea
-                          className="w-full bg-transparent border-none resize-none focus:ring-0 text-lg placeholder-gray-400 dark:text-gray-100"
-                          placeholder={`Post an update for ${body.name}...`}
-                          rows={2}
-                          value={newPostContent}
-                          onChange={(e) => setNewPostContent(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    <div className="flex justify-end items-center mt-4 pt-3 border-t border-gray-100 dark:border-gray-700">
-                      <Button type="submit" disabled={!newPostContent.trim() || posting}>
-                        {posting ? 'Posting...' : 'Post Update'}
-                      </Button>
-                    </div>
-                  </form>
-                </div>
-              )}
-
-              {posts.length > 0 ? (
-                posts.map(post => (
-                  <PostCard
-                    key={post.id}
-                    post={post}
-                    onLike={() => onLikeToggle(post)}
-                    onCommentAdded={onCommentAdded}
-                  />
-                ))
-              ) : (
-                <div className="bg-white dark:bg-gray-800 p-4 rounded shadow border border-gray-200 dark:border-gray-700 text-center text-gray-500">
-                  No posts yet.
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'openings' && (
-            <div className="max-w-3xl mx-auto">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold">Openings</h2>
-                {canCreateEvent && (
-                  <Button size="sm" onClick={() => setShowCreateOpening(true)}>+ Create Opening</Button>
-                )}
-              </div>
-
-              {showCreateOpening && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                  <div className="bg-white dark:bg-gray-800 p-6 rounded-lg w-full max-w-md">
-                    <h3 className="text-xl font-bold mb-4">Create New Opening</h3>
-                    <form onSubmit={handleCreateOpening} className="space-y-4">
-                      <input
-                        placeholder="Job Title"
-                        className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-black"
-                        value={newOpeningTitle}
-                        onChange={e => setNewOpeningTitle(e.target.value)}
-                        required
-                      />
-                      <textarea
-                        placeholder="Description"
-                        className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-black"
-                        rows={3}
-                        value={newOpeningDesc}
-                        onChange={e => setNewOpeningDesc(e.target.value)}
-                        required
-                      />
-                      <div className="grid grid-cols-2 gap-2">
-                        <input
-                          placeholder="City"
-                          className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-black"
-                          value={newOpeningLocationCity}
-                          onChange={e => setNewOpeningLocationCity(e.target.value)}
-                          required
-                        />
-                        <input
-                          placeholder="Country"
-                          className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-black"
-                          value={newOpeningLocationCountry}
-                          onChange={e => setNewOpeningLocationCountry(e.target.value)}
-                          required
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <select
-                          className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-black"
-                          value={newOpeningJobType}
-                          onChange={e => setNewOpeningJobType(e.target.value)}
-                        >
-                          <option value="full_time">Full Time</option>
-                          <option value="part_time">Part Time</option>
-                          <option value="internship">Internship</option>
-                        </select>
-                        <select
-                          className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-black"
-                          value={newOpeningExpLevel}
-                          onChange={e => setNewOpeningExpLevel(e.target.value)}
-                        >
-                          <option value="fresher">Fresher</option>
-                          <option value="1-2_years">1-2 Years</option>
-                          <option value="3+_years">3+ Years</option>
-                        </select>
-                      </div>
-                      <div className="flex justify-end gap-2 mt-4">
-                        <Button variant="outline" type="button" onClick={() => setShowCreateOpening(false)}>Cancel</Button>
-                        <Button type="submit">Create</Button>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-4">
-                {openings.length > 0 ? (
-                  openings.map(opening => (
-                    <PostCard
-                      key={opening.id}
-                      post={{
-                        id: opening.id,
-                        type: 'opening',
-                        content: opening.description,
-                        created_at: opening.created_at,
-                        likes_count: 0,
-                        has_liked: false,
-                        comments_count: 0,
-                        title: opening.title,
-                        job_type: opening.job_type,
-                        experience_level: opening.experience_level,
-                        location_city: opening.location_city,
-                        location_country: opening.location_country,
-                        body_name: body.name
-                      } as any}
-                      onLike={() => { }}
-                      onCommentAdded={() => { }}
-                    />
-                  ))
-                ) : (
-                  <div className="bg-white dark:bg-gray-800 p-8 rounded shadow border border-gray-200 dark:border-gray-700 text-center text-gray-500">
-                    <span className="material-symbols-outlined text-4xl mb-2 text-gray-300">work_off</span>
-                    <p>No active openings at this time.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'events' && (
-            <div className="max-w-3xl mx-auto">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold">Upcoming Events</h2>
-                {canCreateEvent && (
-                  <Button size="sm" onClick={() => setShowCreateEvent(true)}>+ Create Event</Button>
-                )}
-              </div>
-
-              {showCreateEvent && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                  <div className="bg-white dark:bg-gray-800 p-6 rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
-                    <h3 className="text-xl font-bold mb-4">Create New Event</h3>
-                    <form onSubmit={handleCreateEvent} className="space-y-4">
-                      <input
-                        placeholder="Event Title"
-                        className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-black"
-                        value={newEventTitle}
-                        onChange={e => setNewEventTitle(e.target.value)}
-                        required
-                      />
-                      <textarea
-                        placeholder="Description"
-                        className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-black"
-                        rows={3}
-                        value={newEventDesc}
-                        onChange={e => setNewEventDesc(e.target.value)}
-                        required
-                      />
-                      <input
-                        placeholder="Location"
-                        className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-black"
-                        value={newEventLocation}
-                        onChange={e => setNewEventLocation(e.target.value)}
-                        required
-                      />
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="text-xs text-gray-500 mb-1 block">Start Time</label>
-                          <input
-                            type="datetime-local"
-                            className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-black"
-                            value={newEventStartTime}
-                            onChange={e => setNewEventStartTime(e.target.value)}
-                            required
-                          />
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            <div className="lg:col-span-8">
+                {activeTab === 'posts' && (
+                    <div className="space-y-6">
+                    {canPost && (
+                        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
+                            <div className="flex gap-4">
+                                <div className="h-10 w-10 rounded-xl bg-primary flex-shrink-0 flex items-center justify-center text-white font-bold">
+                                    {body.name[0]}
+                                </div>
+                                <textarea
+                                    className="w-full bg-transparent border-none resize-none focus:ring-0 text-lg placeholder-slate-600 text-white"
+                                    placeholder={`Echo a pulse for ${body.name}...`}
+                                    rows={2}
+                                    value={newPostContent}
+                                    onChange={(e) => setNewPostContent(e.target.value)}
+                                />
+                            </div>
+                            <div className="flex justify-end pt-3 border-t border-white/5">
+                                <button
+                                    onClick={onCreatePost}
+                                    disabled={!newPostContent.trim() || posting}
+                                    className="px-6 py-2 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary/90 disabled:opacity-50 transition-all text-xs"
+                                >
+                                    {posting ? 'Syncing...' : 'Broadcast Pulse'}
+                                </button>
+                            </div>
                         </div>
-                        <div>
-                          <label className="text-xs text-gray-500 mb-1 block">End Time</label>
-                          <input
-                            type="datetime-local"
-                            className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-black"
-                            value={newEventEndTime}
-                            onChange={e => setNewEventEndTime(e.target.value)}
-                            required
-                          />
-                        </div>
-                      </div>
-                      <input
-                        type="number"
-                        placeholder="Capacity (Optional)"
-                        className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-black"
-                        value={newEventCapacity}
-                        onChange={e => setNewEventCapacity(e.target.value)}
-                      />
-                      <div className="flex justify-end gap-2 mt-4">
-                        <Button variant="outline" type="button" onClick={() => setShowCreateEvent(false)}>Cancel</Button>
-                        <Button type="submit">Create</Button>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              )}
+                    )}
 
-              <div className="space-y-4">
-                {events.length > 0 ? (
-                  events.map(event => (
-                    <EventCard
-                      key={event.id}
-                      event={event}
-                      onJoin={() => fetchBodyData()}
-                    />
-                  ))
-                ) : (
-                  <div className="bg-white dark:bg-gray-800 p-8 rounded shadow border border-gray-200 dark:border-gray-700 text-center text-gray-500">
-                    <span className="material-symbols-outlined text-4xl mb-2 text-gray-300">event_busy</span>
-                    <p>No upcoming events.</p>
-                  </div>
+                    <div className="space-y-6">
+                        {posts.map(post => (
+                            <PostCard
+                                key={post.id}
+                                post={post}
+                                onLike={() => onLikeToggle(post)}
+                                onCommentAdded={onCommentAdded}
+                            />
+                        ))}
+                        {posts.length === 0 && (
+                            <div className="py-20 text-center bg-white/5 border border-dashed border-white/10 rounded-2xl">
+                                <p className="text-slate-500 italic">This body has no pulse posts yet.</p>
+                            </div>
+                        )}
+                    </div>
+                    </div>
                 )}
-              </div>
+
+                {activeTab === 'events' && (
+                    <div className="space-y-6">
+                        <div className="flex justify-between items-center">
+                            <h2 className="text-xl font-bold text-white">Upcoming Pulse Events</h2>
+                            {canCreateEvent && (
+                                <button
+                                    onClick={() => setShowCreateEvent(true)}
+                                    className="px-4 py-2 bg-primary text-white font-bold rounded-xl shadow-lg transition-all text-xs"
+                                >
+                                    + Add Event
+                                </button>
+                            )}
+                        </div>
+
+                        {showCreateEvent && (
+                            <div className="fixed inset-0 z-[70] bg-background-dark/80 backdrop-blur-md flex items-center justify-center p-4">
+                                <div className="bg-[#1a1223] border border-primary/20 p-8 rounded-2xl w-full max-w-md animate-in zoom-in-95 duration-200">
+                                    <h3 className="text-2xl font-bold text-white mb-6">Create New Pulse Event</h3>
+                                    <form onSubmit={handleCreateEvent} className="space-y-4">
+                                        <input
+                                            placeholder="Pulse Title"
+                                            className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm outline-none focus:ring-1 focus:ring-primary"
+                                            value={newEventTitle}
+                                            onChange={e => setNewEventTitle(e.target.value)}
+                                            required
+                                        />
+                                        <textarea
+                                            placeholder="Event Heartbeat (Description)"
+                                            className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm outline-none focus:ring-1 focus:ring-primary"
+                                            rows={3}
+                                            value={newEventDesc}
+                                            onChange={e => setNewEventDesc(e.target.value)}
+                                            required
+                                        />
+                                        <input
+                                            placeholder="Location Coordinate"
+                                            className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm outline-none focus:ring-1 focus:ring-primary"
+                                            value={newEventLocation}
+                                            onChange={e => setNewEventLocation(e.target.value)}
+                                            required
+                                        />
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">Starts</label>
+                                                <input
+                                                    type="datetime-local"
+                                                    className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white text-xs outline-none"
+                                                    value={newEventStartTime}
+                                                    onChange={e => setNewEventStartTime(e.target.value)}
+                                                    required
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">Ends</label>
+                                                <input
+                                                    type="datetime-local"
+                                                    className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white text-xs outline-none"
+                                                    value={newEventEndTime}
+                                                    onChange={e => setNewEventEndTime(e.target.value)}
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-3 pt-6">
+                                            <button type="button" onClick={() => setShowCreateEvent(false)} className="flex-1 py-3 text-slate-400 font-bold">Cancel</button>
+                                            <button type="submit" className="flex-[2] py-3 bg-primary text-white font-bold rounded-xl shadow-lg">Broadcast Event</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="space-y-4">
+                            {events.map(event => (
+                                <EventCard key={event.id} event={event} onJoin={() => fetchBodyData()} />
+                            ))}
+                            {events.length === 0 && (
+                                <div className="py-20 text-center bg-white/5 border border-dashed border-white/10 rounded-2xl text-slate-500">
+                                    No scheduled pulses yet.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'openings' && (
+                    <div className="space-y-6">
+                        <div className="flex justify-between items-center">
+                            <h2 className="text-xl font-bold text-white">Body Openings</h2>
+                            {canCreateEvent && (
+                                <button
+                                    onClick={() => setShowCreateOpening(true)}
+                                    className="px-4 py-2 bg-primary text-white font-bold rounded-xl shadow-lg transition-all text-xs"
+                                >
+                                    + Add Opening
+                                </button>
+                            )}
+                        </div>
+
+                        {showCreateOpening && (
+                            <div className="fixed inset-0 z-[70] bg-background-dark/80 backdrop-blur-md flex items-center justify-center p-4">
+                                <div className="bg-[#1a1223] border border-primary/20 p-8 rounded-2xl w-full max-w-md animate-in zoom-in-95 duration-200">
+                                    <h3 className="text-2xl font-bold text-white mb-6">New Pulse Opening</h3>
+                                    <form onSubmit={handleCreateOpening} className="space-y-4">
+                                        <input
+                                            placeholder="Role Title"
+                                            className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm outline-none"
+                                            value={newOpeningTitle}
+                                            onChange={e => setNewOpeningTitle(e.target.value)}
+                                            required
+                                        />
+                                        <textarea
+                                            placeholder="Role Mission (Description)"
+                                            className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm outline-none"
+                                            rows={3}
+                                            value={newOpeningDesc}
+                                            onChange={e => setNewOpeningDesc(e.target.value)}
+                                            required
+                                        />
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <input
+                                                placeholder="Location"
+                                                className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm outline-none"
+                                                value={newOpeningLocationCity}
+                                                onChange={e => setNewOpeningLocationCity(e.target.value)}
+                                                required
+                                            />
+                                            <select
+                                                className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm outline-none"
+                                                value={newOpeningJobType}
+                                                onChange={e => setNewOpeningJobType(e.target.value)}
+                                            >
+                                                <option value="full_time" className="bg-background-dark text-white">Full Time</option>
+                                                <option value="part_time" className="bg-background-dark text-white">Part Time</option>
+                                                <option value="internship" className="bg-background-dark text-white">Internship</option>
+                                            </select>
+                                            <select
+                                                className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm outline-none mt-3"
+                                                value={newOpeningExpLevel}
+                                                onChange={e => setNewOpeningExpLevel(e.target.value)}
+                                            >
+                                                <option value="fresher" className="bg-background-dark text-white">Fresher</option>
+                                                <option value="1-2_years" className="bg-background-dark text-white">1-2 Years</option>
+                                                <option value="3+_years" className="bg-background-dark text-white">3+ Years</option>
+                                            </select>
+                                        </div>
+                                        <div className="flex gap-3 pt-6">
+                                            <button type="button" onClick={() => setShowCreateOpening(false)} className="flex-1 py-3 text-slate-400 font-bold">Cancel</button>
+                                            <button type="submit" className="flex-[2] py-3 bg-primary text-white font-bold rounded-xl shadow-lg">Open Role</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="space-y-6">
+                            {openings.map(opening => (
+                                <PostCard
+                                    key={opening.id}
+                                    post={{
+                                        id: opening.id,
+                                        type: 'opening',
+                                        content: opening.description,
+                                        created_at: opening.created_at,
+                                        likes_count: 0,
+                                        has_liked: false,
+                                        comments_count: 0,
+                                        title: opening.title,
+                                        job_type: opening.job_type,
+                                        experience_level: opening.experience_level,
+                                        location_city: opening.location_city,
+                                        location_country: opening.location_country,
+                                        body_name: body.name
+                                    } as any}
+                                    onLike={() => { }}
+                                    onCommentAdded={() => { }}
+                                />
+                            ))}
+                            {openings.length === 0 && (
+                                <div className="py-20 text-center bg-white/5 border border-dashed border-white/10 rounded-2xl text-slate-500">
+                                    No roles available in this heartbeat.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
-          )}
+
+            <div className="lg:col-span-4 space-y-8">
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                    <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                        <span className="material-symbols-outlined text-primary">groups</span>
+                        Top Pulsars
+                    </h3>
+                    <div className="space-y-4">
+                        {members.slice(0, 5).map(member => (
+                            <div key={member.user_id} className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold">
+                                    {member.first_name[0]}
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-white leading-none">{member.first_name} {member.last_name}</p>
+                                    <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-1">{member.role.replace('BODY_', '')}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
