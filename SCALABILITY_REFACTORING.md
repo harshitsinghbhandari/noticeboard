@@ -33,18 +33,18 @@ This document outlines the architectural evolution required to ensure the Notice
 ## 3. Scaling-Oriented Refactoring Strategy
 
 ### Backend: Transition to Service-Oriented Architecture
-- **Introduce Service Layer:** Create `backend/app/services/`. All business logic must move from routes to services.
-- **Service Responsibility:** Services coordinate between multiple repositories (e.g., creating a post AND a notification) and enforce domain rules.
-- **Route Responsibility:** Routes should only handle HTTP concerns (parsing parameters, calling services, returning status codes).
+- ~~**Introduce Service Layer:** Create `backend/app/services/`. All business logic must move from routes to services.~~
+- ~~**Service Responsibility:** Services coordinate between multiple repositories (e.g., creating a post AND a notification) and enforce domain rules.~~
+- ~~**Route Responsibility:** Routes should only handle HTTP concerns (parsing parameters, calling services, returning status codes).~~
 
 ### Frontend: Feature-Based Modularization
-- **Modular Folders:** Transition from `src/components/` to `src/features/[feature_name]/`.
-- **Feature Structure:** Each feature folder should contain its own `components/`, `hooks/`, and `api/` (for feature-specific endpoints).
-- **UI/Logic Separation:** Extract data fetching and state management into custom hooks (e.g., `useFeed`, `usePostActions`).
+- ~~**Modular Folders:** Transition from `src/components/` to `src/features/[feature_name]/`.~~
+- ~~**Feature Structure:** Each feature folder should contain its own `components/`, `hooks/`, and `api/` (for feature-specific endpoints).~~
+- ~~**UI/Logic Separation:** Extract data fetching and state management into custom hooks (e.g., `useFeed`, `usePostActions`).~~
 
 ### Infrastructure: Decoupling
-- **Repository Abstraction:** repositories should return structured Domain Objects/Interfaces instead of raw DB rows.
-- **Centralized API Hooks:** Frontend should use a wrapper around `apiClient` that handles common concerns (loading, errors, caching) to prevent duplication in components.
+- ~~**Repository Abstraction:** repositories should return structured Domain Objects/Interfaces instead of raw DB rows.~~
+- ~~**Centralized API Hooks:** Frontend should use a wrapper around `apiClient` that handles common concerns (loading, errors, caching) to prevent duplication in components.~~
 
 ---
 
