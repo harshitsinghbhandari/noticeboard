@@ -8,11 +8,17 @@ export default function EventDetail() {
     const navigate = useNavigate();
     const { event, isLoading, error, handleJoin, isJoining, handlePublish, isPublishing } = useEventDetail(id);
     const [activeTab, setActiveTab] = useState<'posts' | 'chat' | 'info'>('posts');
+    const [hasJoined, setHasJoined] = useState(false);
 
     if (isLoading && !event) return <div className="p-10 text-center">Loading event...</div>;
     if (error || !event) return <div className="p-10 text-center text-red-500">Event not found</div>;
 
     const startDate = new Date(event.start_time);
+
+    const onJoinClick = async () => {
+        await handleJoin();
+        setHasJoined(true);
+    };
 
     return (
         <div className="max-w-4xl mx-auto px-0 md:px-6 pb-24 animate-fade-in">
@@ -180,12 +186,17 @@ export default function EventDetail() {
                             </button>
                         )}
                         <button
-                            onClick={handleJoin}
-                            disabled={isJoining || event.status === 'draft'}
-                            className="flex-1 md:w-48 py-3.5 bg-primary hover:bg-primary/90 text-white text-sm font-extrabold rounded-xl shadow-lg shadow-primary/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                            onClick={onJoinClick}
+                            disabled={isJoining || event.status === 'draft' || hasJoined}
+                            className={`flex-1 md:w-48 py-3.5 bg-primary hover:bg-primary/90 text-white text-sm font-extrabold rounded-xl shadow-lg shadow-primary/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50 ${hasJoined
+                                    ? 'bg-green-600 text-white shadow-green-600/30'
+                                    : 'bg-primary hover:bg-primary/90 text-white shadow-primary/30'
+                                }`}
                         >
-                            <span className="material-symbols-outlined text-lg">check_circle</span>
-                            {isJoining ? 'Joining...' : 'Join Event'}
+                            <span className="material-symbols-outlined text-lg">
+                                {hasJoined ? 'check_circle' : 'add_circle'}
+                            </span>
+                            {isJoining ? 'Joining...' : hasJoined ? 'Joined' : 'Join Event'}
                         </button>
                         <button className="p-3.5 bg-white/5 border border-white/10 hover:bg-white/10 rounded-xl transition-all">
                             <span className="material-symbols-outlined text-white">calendar_add_on</span>

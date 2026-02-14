@@ -1,8 +1,47 @@
+import { useNavigate } from 'react-router-dom';
 import { useEvents } from '../hooks/useEvents';
 import { Link } from 'react-router-dom';
+import { useApi } from '../../../hooks/useApi';
+import { joinEvent } from '../api/events';
+import { useState, useEffect } from 'react';
 
 export default function EventDiscovery() {
     const { events, isLoading } = useEvents();
+    const navigate = useNavigate();
+
+    // Track join status for each event: 'idle' | 'joining' | 'joined'
+    const [joinStatus, setJoinStatus] = useState<Record<string, 'idle' | 'joining' | 'joined'>>({});
+
+    const { execute: joinEventExecute } = useApi(joinEvent);
+
+    useEffect(() => {
+        console.log("[EventDiscovery] Component Mounted/Updated. Events count:", events.length);
+    }, [events]);
+
+    const handleJoinEvent = async (e: React.MouseEvent, eventId: string) => {
+        console.log(`[EventDiscovery] handleJoinEvent called for ${eventId}`);
+        e.preventDefault();
+        e.stopPropagation();
+        // optimistic update
+        setJoinStatus(prev => ({ ...prev, [eventId]: 'joining' }));
+
+        try {
+            console.log(`[EventDiscovery] Calling API for event: ${eventId}`);
+            await joinEventExecute(eventId);
+            console.log(`[EventDiscovery] Join successful for event: ${eventId}`);
+            setJoinStatus(prev => ({ ...prev, [eventId]: 'joined' }));
+
+            // Delay redirect to show "Joined" state
+            setTimeout(() => {
+                console.log(`[EventDiscovery] Redirecting to /events/${eventId}`);
+                navigate(`/events/${eventId}`);
+            }, 1000);
+        } catch (error) {
+            console.error("[EventDiscovery] Failed to join event", error);
+            alert(`Failed to join event: ${error}`);
+            setJoinStatus(prev => ({ ...prev, [eventId]: 'idle' }));
+        }
+    };
 
     // In a real app, these would be filtered by the backend or categorized here
     const happeningSoon = events.slice(0, 3);
@@ -139,9 +178,20 @@ export default function EventDiscovery() {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <Link to={`/events/${event.id}`} className="px-6 py-3 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl transition-all active:scale-95 shadow-lg shadow-primary/20">
-                                        RSVP Now
-                                    </Link>
+                                    <button
+                                        onClick={(e) => {
+                                            console.log("Inline onClick triggered");
+                                            handleJoinEvent(e, event.id);
+                                        }}
+                                        disabled={joinStatus[event.id] === 'joining' || joinStatus[event.id] === 'joined'}
+                                        className={`px-6 py-3 font-bold rounded-xl transition-all active:scale-95 shadow-lg ${joinStatus[event.id] === 'joined'
+                                            ? 'bg-green-600 text-white shadow-green-600/20'
+                                            : 'bg-primary hover:bg-primary/90 text-white shadow-primary/20'
+                                            } disabled:opacity-90 disabled:cursor-not-allowed`}
+                                    >
+                                        {joinStatus[event.id] === 'joining' ? 'Joining...' :
+                                            joinStatus[event.id] === 'joined' ? 'Joined' : 'RSVP Now'}
+                                    </button>
                                     <button className="p-3 bg-white/5 hover:bg-white/10 text-slate-400 rounded-xl transition-all">
                                         <span className="material-symbols-outlined">share</span>
                                     </button>
