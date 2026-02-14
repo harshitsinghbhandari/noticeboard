@@ -5,7 +5,7 @@ import { socket } from '../../../utils/socket';
 import { useApi } from '../../../hooks/useApi';
 import type { Message, GroupMessage } from '../../../types';
 
-export const useChat = (chatId: string | null, chatType: 'user' | 'group' | null) => {
+export const useChat = (chatId: string | null, chatType: 'user' | 'group' | null, currentUserId?: string) => {
     const { clearUnread } = useUnread();
     const [isBlocked, setIsBlocked] = useState(false);
 
@@ -14,7 +14,7 @@ export const useChat = (chatId: string | null, chatType: 'user' | 'group' | null
         isLoading: loadingMessages,
         execute: executeFetchMessages,
         setData: setMessages
-    } = useApi< (Message | GroupMessage)[], [string] >(
+    } = useApi<(Message | GroupMessage)[], [string]>(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         chatType === 'user' ? (messagesApi.getUserChat as any) : (messagesApi.getGroupChat as any)
     );
@@ -46,6 +46,7 @@ export const useChat = (chatId: string | null, chatType: 'user' | 'group' | null
         const onMessageNew = (msg: Message) => {
             if (chatType === 'user' && (msg.sender_id === chatId || msg.receiver_id === chatId)) {
                 setMessages(prev => {
+                    // Check if message already exists (by ID or optimistic match)
                     if (!prev || prev.find(m => m.id === msg.id)) return prev;
                     return [...prev, msg];
                 });
@@ -78,7 +79,33 @@ export const useChat = (chatId: string | null, chatType: 'user' | 'group' | null
 
     const sendMessage = async (text: string) => {
         if (!chatId || !chatType || !text.trim()) return;
-        return await executeSendMessage(chatId, text);
+
+        // Optimistic Update
+        const tempId = `temp-${Date.now()}`;
+        const optimisticMsg = {
+            id: tempId,
+            sender_id: currentUserId || 'me',
+            created_at: new Date().toISOString(),
+            ...(chatType === 'user'
+                ? { message_text: text, receiver_id: chatId }
+                : { content: text, group_id: chatId }
+            )
+        } as Message | GroupMessage;
+
+        setMessages(prev => [...(prev || []), optimisticMsg]);
+
+        try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const response = await executeSendMessage(chatId, text) as any;
+
+            // Replace optimistic message with real message from server
+            setMessages(prev => prev?.map(m => m.id === tempId ? response : m) || []);
+            return response;
+        } catch (error) {
+            // Revert optimistic update on failure
+            setMessages(prev => prev?.filter(m => m.id !== tempId) || []);
+            throw error;
+        }
     };
 
     return {

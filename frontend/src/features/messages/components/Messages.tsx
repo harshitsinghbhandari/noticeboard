@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import type { Group, GroupMessage, Message, Event } from '../../../types';
 import { useConversations } from '../hooks/useConversations';
 import { useChat } from '../hooks/useChat';
 import apiClient from '../../../api/client';
 import CreateGroupModal from './CreateGroupModal';
+import { UnreadContext } from '../../../context/UnreadContextCore';
 
 type ChatView = 'groups' | 'dms';
 
@@ -16,6 +17,7 @@ export default function Messages({ currentUserId }: MessagesProps) {
     const { type: urlType, id: urlId } = useParams();
     const navigate = useNavigate();
     const { conversations, groups, fetchData: refreshConversations } = useConversations();
+    const { totalUnread, unreadBySender } = useContext(UnreadContext)!;
 
     const [chatView, setChatView] = useState<ChatView>(urlType === 'group' ? 'groups' : 'dms');
     const [selectedChat, setSelectedChat] = useState<{ id: string, type: 'user' | 'group' } | null>(
@@ -36,12 +38,21 @@ export default function Messages({ currentUserId }: MessagesProps) {
         isBlocked,
         setIsBlocked,
         sendMessage
-    } = useChat(selectedChat?.id || null, selectedChat?.type || null);
+    } = useChat(selectedChat?.id || null, selectedChat?.type || null, currentUserId);
 
     const [newMessage, setNewMessage] = useState('');
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
     const [activeEvent, setActiveEvent] = useState<Event | null>(null);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
+
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages]);
 
     const fetchActiveEvent = useCallback(async (groupId: string) => {
         try {
@@ -109,6 +120,17 @@ export default function Messages({ currentUserId }: MessagesProps) {
 
     const otherUser = selectedChat?.type === 'user' ? conversations.find(c => c.other_id === selectedChat.id) : null;
 
+    const formatDateHeader = (dateStr: string) => {
+        const date = new Date(dateStr);
+        const today = new Date();
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        if (date.toDateString() === today.toDateString()) return 'Today';
+        if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+        return date.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
+    };
+
     return (
         <div className="flex h-[calc(100vh-80px)] w-full bg-background-light dark:bg-background-dark -mx-4 md:mx-0 overflow-hidden">
             {/* Chat List Sidebar */}
@@ -117,7 +139,11 @@ export default function Messages({ currentUserId }: MessagesProps) {
                 <div className="h-16 flex items-center justify-between px-6 border-b border-slate-200 dark:border-white/5">
                     <div className="flex items-center gap-4">
                         <h1 className="text-xl font-bold tracking-tight text-white">Messages</h1>
-                        <span className="px-2 py-0.5 rounded-full bg-primary/20 text-primary text-xs font-semibold">12 Unread</span>
+                        {totalUnread > 0 && (
+                            <span className="px-2 py-0.5 rounded-full bg-primary/20 text-primary text-xs font-semibold">
+                                {totalUnread} Unread
+                            </span>
+                        )}
                     </div>
                     <button onClick={() => setIsCreateGroupOpen(true)} className="p-2 rounded-lg bg-slate-100 dark:bg-[#251832] text-slate-500 dark:text-slate-300 hover:text-primary transition-colors">
                         <span className="material-symbols-outlined">group_add</span>
@@ -204,15 +230,24 @@ export default function Messages({ currentUserId }: MessagesProps) {
                             {conversations.map(conv => (
                                 <div key={conv.other_id} onClick={() => setSelectedChat({ id: conv.other_id, type: 'user' })} className="px-2">
                                     <div className={`p-3 flex items-center gap-3 rounded-xl cursor-pointer transition-all ${selectedChat?.id === conv.other_id ? 'bg-white/10' : 'hover:bg-white/5'}`}>
-                                        <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center shrink-0 text-primary font-bold">
+                                        <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center shrink-0 text-primary font-bold relative">
                                             {conv.first_name[0]}
+                                            {(unreadBySender[conv.other_id] || 0) > 0 && (
+                                                <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-[#1a1625]">
+                                                    {unreadBySender[conv.other_id]}
+                                                </span>
+                                            )}
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex justify-between items-center">
-                                                <h4 className="font-semibold text-sm truncate text-white">{conv.first_name} {conv.last_name}</h4>
+                                                <h4 className={`font-semibold text-sm truncate text-white ${(unreadBySender[conv.other_id] || 0) > 0 ? 'font-black' : ''}`}>
+                                                    {conv.first_name} {conv.last_name}
+                                                </h4>
                                                 <span className="text-[10px] text-slate-500">Now</span>
                                             </div>
-                                            <p className="text-xs text-slate-400 truncate">{conv.message_text}</p>
+                                            <p className={`text-xs text-slate-400 truncate ${(unreadBySender[conv.other_id] || 0) > 0 ? 'font-bold text-white' : ''}`}>
+                                                {conv.message_text}
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -241,10 +276,11 @@ export default function Messages({ currentUserId }: MessagesProps) {
                                     <h2 className="font-bold text-sm text-white">
                                         {selectedChat.type === 'group' ? (activeChatData as Group)?.name : `${otherUser?.first_name} ${otherUser?.last_name}`}
                                     </h2>
-                                    <p className="text-[10px] text-primary font-bold flex items-center gap-1">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                                        {activeEvent ? 'Event Group' : 'Active Now'}
-                                    </p>
+                                    {activeEvent && (
+                                        <p className="text-[10px] text-primary font-bold flex items-center gap-1">
+                                            Event Group
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
@@ -257,12 +293,6 @@ export default function Messages({ currentUserId }: MessagesProps) {
                                         View Event
                                     </button>
                                 )}
-                                <button className="p-2 text-slate-400 hover:text-primary transition-colors">
-                                    <span className="material-symbols-outlined">videocam</span>
-                                </button>
-                                <button className="p-2 text-slate-400 hover:text-primary transition-colors">
-                                    <span className="material-symbols-outlined">call</span>
-                                </button>
                                 <div className="relative">
                                     <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 text-slate-400 hover:text-primary transition-colors">
                                         <span className="material-symbols-outlined">more_vert</span>
@@ -294,10 +324,6 @@ export default function Messages({ currentUserId }: MessagesProps) {
 
                         {/* Messages Window */}
                         <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 hide-scrollbar">
-                            <div className="flex justify-center">
-                                <span className="text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-white/5 px-3 py-1 rounded-full uppercase tracking-widest">Today</span>
-                            </div>
-
                             {messages.map((msg, idx) => {
                                 const isMe = msg.sender_id === currentUserId;
                                 const groupMsg = msg as GroupMessage;
@@ -306,34 +332,80 @@ export default function Messages({ currentUserId }: MessagesProps) {
                                     ? `${groupMsg.sender_first_name} ${groupMsg.sender_last_name}`
                                     : 'Other';
 
+                                const prevMsg = messages[idx - 1];
+                                const nextMsg = messages[idx + 1];
+
+                                const isSameSenderAsPrev = prevMsg && prevMsg.sender_id === msg.sender_id;
+                                const isSameSenderAsNext = nextMsg && nextMsg.sender_id === msg.sender_id;
+
+                                const timeDiffPrev = prevMsg ? new Date(msg.created_at).getTime() - new Date(prevMsg.created_at).getTime() : Infinity;
+                                const timeDiffNext = nextMsg ? new Date(nextMsg.created_at).getTime() - new Date(msg.created_at).getTime() : Infinity;
+
+                                const within5MinsPrev = isSameSenderAsPrev && timeDiffPrev < 5 * 60 * 1000;
+                                const within5MinsNext = isSameSenderAsNext && timeDiffNext < 5 * 60 * 1000;
+
+                                const showDateSeparator = idx === 0 ||
+                                    (prevMsg && new Date(msg.created_at).toDateString() !== new Date(prevMsg.created_at).toDateString());
+
+                                const isFirstInGroup = !within5MinsPrev || showDateSeparator;
+                                const isLastInGroup = !within5MinsNext || (nextMsg && new Date(nextMsg.created_at).toDateString() !== new Date(msg.created_at).toDateString());
+
                                 return (
-                                    <div key={idx} className={`flex items-end gap-3 max-w-[80%] ${isMe ? 'ml-auto flex-row-reverse' : ''}`}>
-                                        <div className={`w-8 h-8 rounded-full overflow-hidden shrink-0 shadow-sm border ${isMe ? 'border-primary/20' : 'border-white/10'} bg-slate-700 flex items-center justify-center text-[10px] font-bold text-white`}>
-                                            {senderName[0]}
-                                        </div>
-                                        <div className={`flex flex-col gap-1 ${isMe ? 'items-end' : ''}`}>
-                                            {!isMe && <span className="text-[10px] font-bold text-slate-500 ml-1">{senderName}</span>}
-                                            <div className={`p-3 rounded-2xl shadow-sm border ${isMe ? 'bg-primary text-white rounded-br-none border-transparent active-glow' : 'bg-white dark:bg-[#251832] rounded-bl-none border-slate-200 dark:border-white/5'}`}>
-                                                <p className="text-sm">{dmMsg.message_text || groupMsg.content}</p>
+                                    <div key={idx} className={`flex flex-col ${isLastInGroup ? 'mb-6' : 'mb-0'}`}>
+                                        {showDateSeparator && (
+                                            <div className="flex justify-center mb-6">
+                                                <span className="text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-white/5 px-3 py-1 rounded-full uppercase tracking-widest">
+                                                    {formatDateHeader(msg.created_at)}
+                                                </span>
                                             </div>
-                                            <div className="flex items-center gap-1 mx-1">
-                                                <span className="text-[10px] text-slate-400">{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                                {isMe && <span className="material-symbols-outlined text-xs text-primary">done_all</span>}
+                                        )}
+                                        <div className={`flex items-end gap-3 max-w-[80%] ${isMe ? 'ml-auto flex-row-reverse' : ''}`}>
+                                            <div className="w-8 h-8 shrink-0 flex items-center justify-center">
+                                                {isLastInGroup && !isMe ? (
+                                                    <div className="w-8 h-8 rounded-full overflow-hidden shadow-sm border border-white/10 bg-slate-700 flex items-center justify-center text-[10px] font-bold text-white">
+                                                        {senderName[0]}
+                                                    </div>
+                                                ) : <div className="w-8 h-8" />}
+                                            </div>
+
+                                            <div className={`flex flex-col gap-1 ${isMe ? 'items-end' : ''}`}>
+                                                {!isMe && isFirstInGroup && <span className="text-[10px] font-bold text-slate-500 ml-1 mt-2">{senderName}</span>}
+                                                <div className={`px-4 py-2 shadow-sm border transition-all
+                                                    ${isMe
+                                                        ? 'bg-primary text-white border-transparent active-glow'
+                                                        : 'bg-white dark:bg-[#251832] border-slate-200 dark:border-white/5'}
+                                                    ${isFirstInGroup ? (isMe ? 'rounded-2xl rounded-tr-md' : 'rounded-2xl rounded-tl-md') : ''}
+                                                    ${!isFirstInGroup && !isLastInGroup ? (isMe ? 'rounded-2xl rounded-xr-md' : 'rounded-2xl rounded-xl-md') : ''} 
+                                                    ${isLastInGroup ? (isMe ? 'rounded-2xl rounded-br-none' : 'rounded-2xl rounded-bl-none') : ''}
+                                                    ${!isFirstInGroup && !isLastInGroup ? 'rounded-md' : ''}
+                                                    ${/* Override for middle messages to look connected */ ''}
+                                                    ${!isFirstInGroup && !isLastInGroup ? (isMe ? 'rounded-r-md' : 'rounded-l-md') : ''}
+                                                    rounded-2xl
+                                                `}>
+                                                    <p className="text-sm">{dmMsg.message_text || groupMsg.content}</p>
+                                                </div>
+                                                {isLastInGroup && (
+                                                    <div className="flex items-center gap-1 mx-1">
+                                                        <span className="text-[10px] text-slate-400">{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                        {isMe && <span className="material-symbols-outlined text-xs text-primary">done_all</span>}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
                                 );
                             })}
+                            <div ref={messagesEndRef} />
                         </div>
 
                         {/* Input Bar */}
                         <div className="p-4 bg-white dark:bg-background-dark border-t border-slate-200 dark:border-white/5">
-                            <form onSubmit={handleSendMessage} className="flex items-center gap-3 bg-slate-100 dark:bg-[#251832] rounded-xl px-4 py-2 border border-transparent focus-within:border-primary transition-all">
+                            <form onSubmit={handleSendMessage} className="flex items-center gap-3 bg-slate-100 dark:bg-[#251832] rounded-xl px-4 py-2 border border-transparent transition-all">
                                 <button type="button" className="text-slate-400 hover:text-primary transition-colors">
                                     <span className="material-symbols-outlined">add_circle</span>
                                 </button>
                                 <input
-                                    className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-2 text-white"
+                                    className="flex-1 bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-sm py-2 text-white caret-white placeholder-slate-400"
                                     placeholder={isBlocked ? "User is blocked" : "Type a message..."}
                                     type="text"
                                     value={newMessage}
