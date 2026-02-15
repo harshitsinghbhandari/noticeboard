@@ -84,8 +84,8 @@ export class BodyService {
         return await listPosts(userId, limit, cursor, bodyId);
     }
 
-    static async listBodyEvents(bodyId: string) {
-        return await getEventsByBodyId(bodyId);
+    static async listBodyEvents(bodyId: string, userId?: string) {
+        return await getEventsByBodyId(bodyId, userId);
     }
 
     static async followBody(bodyId: string, userId: string) {

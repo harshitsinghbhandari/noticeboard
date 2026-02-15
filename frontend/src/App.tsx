@@ -120,7 +120,7 @@ function AppContent() {
               <Routes>
                 <Route path="/" element={<Navigate to="/events" replace />} />
                 <Route path="/events" element={<EventDiscovery />} />
-                <Route path="/events/:id" element={<EventDetail />} />
+                <Route path="/events/:id" element={<EventDetail currentUserId={parsedToken?.sub} />} />
                 <Route path="/feed" element={<Feed />} />
                 <Route path="/connections" element={<Connections currentUserId={parsedToken?.sub} />} />
                 <Route path="/bodies" element={<Bodies />} />

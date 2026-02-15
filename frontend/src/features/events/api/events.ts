@@ -18,3 +18,9 @@ export const getEventAttendees = (id: string) =>
 
 export const publishEvent = (id: string) =>
     apiClient.patch(`/events/${id}/publish`);
+
+export const deleteEvent = (id: string) =>
+    apiClient.delete(`/events/${id}`);
+
+export const updateEvent = (id: string, data: any) =>
+    apiClient.patch<Event>(`/events/${id}`, data);

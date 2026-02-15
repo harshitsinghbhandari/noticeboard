@@ -1,14 +1,25 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEventDetail } from '../hooks/useEventDetail';
 import { Button } from '../../../components/ui/Button';
 
-export default function EventDetail() {
+interface EventDetailProps {
+    currentUserId?: string;
+}
+
+export default function EventDetail({ currentUserId }: EventDetailProps) {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { event, isLoading, error, handleJoin, isJoining, handlePublish, isPublishing } = useEventDetail(id);
+    const { event, isLoading, error, handleJoin, isJoining, handlePublish, isPublishing, attendees, isLoadingAttendees } = useEventDetail(id);
     const [activeTab, setActiveTab] = useState<'posts' | 'chat' | 'info'>('posts');
     const [hasJoined, setHasJoined] = useState(false);
+
+    useEffect(() => {
+        if (attendees && currentUserId) {
+            const isParticipant = attendees.some(u => u.id === currentUserId);
+            setHasJoined(isParticipant);
+        }
+    }, [attendees, currentUserId]);
 
     if (isLoading && !event) return <div className="p-10 text-center">Loading event...</div>;
     if (error || !event) return <div className="p-10 text-center text-red-500">Event not found</div>;
@@ -17,6 +28,7 @@ export default function EventDetail() {
 
     const onJoinClick = async () => {
         await handleJoin();
+        // Optimistic update is fine, but fetchAttendees in hook will confirm it
         setHasJoined(true);
     };
 
@@ -42,14 +54,35 @@ export default function EventDetail() {
                 <div className="bg-white dark:bg-[#251a30] p-4 rounded-xl shadow-2xl border border-white/5 flex flex-wrap items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                         <div className="flex -space-x-3 overflow-hidden">
-                            <img className="inline-block h-10 w-10 rounded-full ring-2 ring-[#251a30]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCt_NkHvvKR_jhOI_u2UX8xd2MMjAfCuZ9KLC0psV6npbSgx1YS9pncT_HAcIiNJ4xSLh3pHWDWHoLkn5Lq6xhQQ1p5CoIdg2FtJ8btNk0h5406eY2uTQGFSRwRBU3uPXCeSl8NRqLZedpZyelBJcWP88hB2tn3AfnRCtbpG-rPha4_uTvMNVODtX7q49p3KpGDy5-rXqhpem-PKnnj78ecxgkLb9exUSwBDPCCvwEexll9X_v_b4Kcfv3tqcSrmU-sALRUpB0XE2A" alt="Avatar 1" />
-                            <img className="inline-block h-10 w-10 rounded-full ring-2 ring-[#251a30]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAzPr5_KgyZjWDHfQS4mZZ7VcDovTG0MGBuV2KJ--csZpnaEbjPxvHfc8Coj-3LOiS6efzH5w1lXQ7ux85TfSCMedmREiJgddD49YWyryI980hfOM5HMFuUNEF1IglpQ0DeyspnoNW2lIKnzI4gdE48PUjNWCcobolmt06FiIWNS45FkimFXDJoFOzdbC4CHqVIybNETMpE1IqQu7lg2rx9N7ovgI8xJpl0t7rOPPuzsBreITw_kKXW_Ni4vlkGfMwp4Wwz3xfwRAw" alt="Avatar 2" />
-                            <img className="inline-block h-10 w-10 rounded-full ring-2 ring-[#251a30]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCVRtDtTKFk5aqZX96tdtUAuKEs5eKS8DNyKcROBp_qEDigA2lSVSEFau1X5vwHMwPMhlGBDLS3GnDIY3ln4ZxyVbKbcsNrm0XXbWvqWUiZHJZCtkKBI8qpDnTpLEIFI1sOWgTpaKXzB5m4XE48Fx0EdPPjwwb2gk7PQzGzSqNHrmBwG0ys9s2Cf4vREas_ZpXFFywwAE0HmTRA4GPT9aY-h9qtGOXnN9FvJ2-u8YohYquIcOCDwG16zEO5m-dyB4FrrLmJJd6r66M" alt="Avatar 3" />
-                            <div className="flex items-center justify-center h-10 w-10 rounded-full ring-2 ring-[#251a30] bg-primary text-[10px] font-bold text-white uppercase">+15</div>
+                            {isLoadingAttendees ? (
+                                <div className="h-10 w-10 rounded-full bg-slate-700 animate-pulse"></div>
+                            ) : attendees && attendees.length > 0 ? (
+                                <>
+                                    {attendees.slice(0, 5).map((user, i) => (
+                                        <img
+                                            key={i}
+                                            className="inline-block h-10 w-10 rounded-full ring-2 ring-[#251a30] object-cover bg-slate-700"
+                                            src={user.profile_image_url || `https://ui-avatars.com/api/?name=${user.first_name}+${user.last_name}&background=random`}
+                                            alt={`${user.first_name} ${user.last_name}`}
+                                        />
+                                    ))}
+                                    {attendees.length > 5 && (
+                                        <div className="flex items-center justify-center h-10 w-10 rounded-full ring-2 ring-[#251a30] bg-primary text-[10px] font-bold text-white uppercase">
+                                            +{attendees.length - 5}
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <div className="flex items-center justify-center h-10 w-10 rounded-full ring-2 ring-[#251a30] bg-slate-700 text-[10px] font-bold text-white uppercase">
+                                    0
+                                </div>
+                            )}
                         </div>
                         <div>
-                            <p className="text-sm font-bold text-white">18 students going</p>
-                            <p className="text-xs text-primary font-semibold">5 from your circle</p>
+                            <p className="text-sm font-bold text-white">
+                                {attendees ? attendees.length : 0} students going
+                            </p>
+                            {/* <p className="text-xs text-primary font-semibold">5 from your circle</p> */}
                         </div>
                     </div>
                     <div className="flex gap-2">
@@ -95,7 +128,6 @@ export default function EventDetail() {
                             className={`py-4 border-b-2 text-sm font-bold capitalize transition-colors ${activeTab === tab ? 'border-primary text-primary' : 'border-transparent text-slate-400 hover:text-white'}`}
                         >
                             {tab}
-                            {tab === 'chat' && <span className="ml-1 px-1.5 py-0.5 bg-primary/20 text-[10px] rounded">12</span>}
                         </button>
                     ))}
                 </div>
@@ -175,7 +207,7 @@ export default function EventDetail() {
                         <span className="text-sm font-bold text-white">{event.capacity ? `${event.capacity} seats` : 'Unlimited'}</span>
                     </div>
                     <div className="flex flex-1 md:flex-initial gap-3">
-                        {event.status === 'draft' && (
+                        {event.status === 'draft' && event.is_admin && (
                             <button
                                 onClick={handlePublish}
                                 disabled={isPublishing}
@@ -189,8 +221,8 @@ export default function EventDetail() {
                             onClick={onJoinClick}
                             disabled={isJoining || event.status === 'draft' || hasJoined}
                             className={`flex-1 md:w-48 py-3.5 bg-primary hover:bg-primary/90 text-white text-sm font-extrabold rounded-xl shadow-lg shadow-primary/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50 ${hasJoined
-                                    ? 'bg-green-600 text-white shadow-green-600/30'
-                                    : 'bg-primary hover:bg-primary/90 text-white shadow-primary/30'
+                                ? 'bg-green-600 text-white shadow-green-600/30'
+                                : 'bg-primary hover:bg-primary/90 text-white shadow-primary/30'
                                 }`}
                         >
                             <span className="material-symbols-outlined text-lg">

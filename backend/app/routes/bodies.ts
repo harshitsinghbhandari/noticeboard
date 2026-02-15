@@ -114,7 +114,7 @@ router.get('/:id/posts', authMiddleware, async (req, res) => {
 
 router.get('/:id/events', authMiddleware, async (req, res) => {
     try {
-        const events = await BodyService.listBodyEvents(req.params.id);
+        const events = await BodyService.listBodyEvents(req.params.id, req.user?.id);
         res.json(events);
     } catch (error) {
         console.error('List body events error', error);

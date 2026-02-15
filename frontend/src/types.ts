@@ -36,6 +36,7 @@ export interface UserProfile {
     connection_status?: 'pending' | 'accepted' | 'rejected' | null;
     is_connection_sender?: boolean;
     is_blocked?: boolean;
+    profile_image_url?: string;
 }
 
 export interface Notification {
@@ -184,4 +185,5 @@ export interface Event {
     updated_at: string;
     cancelled_at?: string;
     body_name?: string;
+    is_admin?: boolean;
 }

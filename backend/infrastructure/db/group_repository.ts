@@ -39,6 +39,16 @@ export interface GroupMessage {
     is_organizer?: boolean;
 }
 
+export interface GroupMemberUser {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email: string; // Keep email for uniqueness checks if needed, but maybe don't expose to frontend if sensitive? Actually it's fine for now or I can omit it.
+    profile_image_url?: string;
+    role: string;
+    joined_at: Date;
+}
+
 export interface CreateGroupParams {
     name: string;
     description: string;
@@ -373,8 +383,21 @@ export async function getGroupUnreadSummary(userId: string): Promise<{ totalUnre
      `;
     const res = await pool.query(query, [userId]);
 
-    const totalUnread = res.rows.reduce((sum, row) => sum + row.unread_count, 0);
     const groups = res.rows.map(r => ({ groupId: r.group_id, unreadCount: r.unread_count }));
+    const totalUnread = groups.reduce((sum, g) => sum + g.unreadCount, 0);
 
     return { totalUnread, groups };
+}
+
+export async function getGroupMembers(groupId: string): Promise<GroupMemberUser[]> {
+    const query = `
+        SELECT u.id, u.first_name, u.last_name, u.email, up.profile_image_url, gm.role, gm.joined_at
+        FROM group_members gm
+        JOIN users u ON gm.user_id = u.id
+        LEFT JOIN user_profiles up ON u.id = up.user_id
+        WHERE gm.group_id = $1 AND gm.status = 'active'
+        ORDER BY gm.joined_at DESC
+    `;
+    const res = await pool.query(query, [groupId]);
+    return res.rows;
 }

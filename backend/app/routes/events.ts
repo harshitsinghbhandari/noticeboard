@@ -18,7 +18,7 @@ router.post('/', authMiddleware, async (req, res) => {
 // Publish Event
 router.patch('/:id/publish', authMiddleware, async (req, res) => {
     try {
-        await EventService.publishEvent(req.user!.id, req.params.id);
+        await EventService.publishEvent(req.user!.id, req.params.id as string);
         res.json({ success: true });
     } catch (e: any) {
         console.error('Publish event error', e);
@@ -29,7 +29,7 @@ router.patch('/:id/publish', authMiddleware, async (req, res) => {
 // Edit Event
 router.patch('/:id', authMiddleware, async (req, res) => {
     try {
-        const event = await EventService.updateEvent(req.user!.id, req.params.id, req.body);
+        const event = await EventService.updateEvent(req.user!.id, req.params.id as string, req.body);
         res.json(event);
     } catch (e: any) {
         console.error('Update event error', e);
@@ -40,7 +40,7 @@ router.patch('/:id', authMiddleware, async (req, res) => {
 // Join Event
 router.post('/:id/join', authMiddleware, async (req, res) => {
     try {
-        await EventService.joinEvent(req.user!.id, req.params.id);
+        await EventService.joinEvent(req.user!.id, req.params.id as string);
         res.json({ success: true });
     } catch (e: any) {
         console.error('Join event error', e);
@@ -51,7 +51,7 @@ router.post('/:id/join', authMiddleware, async (req, res) => {
 // Leave Event
 router.patch('/:id/leave', authMiddleware, async (req, res) => {
     try {
-        await EventService.leaveEvent(req.user!.id, req.params.id);
+        await EventService.leaveEvent(req.user!.id, req.params.id as string);
         res.json({ success: true });
     } catch (e: any) {
         console.error('Leave event error', e);
@@ -62,10 +62,21 @@ router.patch('/:id/leave', authMiddleware, async (req, res) => {
 // Cancel Event
 router.patch('/:id/cancel', authMiddleware, async (req, res) => {
     try {
-        await EventService.cancelEvent(req.user!.id, req.params.id);
+        await EventService.cancelEvent(req.user!.id, req.params.id as string);
         res.json({ success: true });
     } catch (e: any) {
         console.error('Cancel event error', e);
+        res.status(e.message.startsWith('Forbidden') ? 403 : 400).json({ error: e.message });
+    }
+});
+
+// Delete Event
+router.delete('/:id', authMiddleware, async (req, res) => {
+    try {
+        await EventService.deleteEvent(req.user!.id, req.params.id as string);
+        res.json({ success: true });
+    } catch (e: any) {
+        console.error('Delete event error', e);
         res.status(e.message.startsWith('Forbidden') ? 403 : 400).json({ error: e.message });
     }
 });
@@ -75,15 +86,15 @@ router.get('/', authMiddleware, async (req, res) => {
     try {
         const { lat, lng, radius } = req.query;
         // Helper to safely parse float from query param
-        const parseQueryParam = (param: string | string[] | undefined, defaultVal: number): number => {
+        const parseQueryParam = (param: any, defaultVal: number): number => {
             if (!param) return defaultVal;
             const strVal = Array.isArray(param) ? param[0] : param;
-            return parseFloat(strVal);
+            return parseFloat(strVal as string);
         }
 
-        const userLat = parseQueryParam(lat as string | string[] | undefined, 19.1240);
-        const userLng = parseQueryParam(lng as string | string[] | undefined, 72.9112);
-        const searchRadius = parseQueryParam(radius as string | string[] | undefined, 50000);
+        const userLat = parseQueryParam(lat, 19.1240);
+        const userLng = parseQueryParam(lng, 72.9112);
+        const searchRadius = parseQueryParam(radius, 50000);
 
         const events = await EventService.listEvents(
             userLat,
@@ -100,7 +111,7 @@ router.get('/', authMiddleware, async (req, res) => {
 // Get Event by ID
 router.get('/:id', authMiddleware, async (req, res) => {
     try {
-        const event = await EventService.getEvent(req.params.id);
+        const event = await EventService.getEvent(req.params.id as string, req.user?.id);
         if (!event) return res.status(404).json({ error: 'Event not found' });
         res.json(event);
     } catch (e: any) {
@@ -108,10 +119,21 @@ router.get('/:id', authMiddleware, async (req, res) => {
     }
 });
 
+// Get Event Attendees
+router.get('/:id/attendees', authMiddleware, async (req, res) => {
+    try {
+        const attendees = await EventService.getEventAttendees(req.params.id as string);
+        res.json(attendees);
+    } catch (e: any) {
+        console.error('Get event attendees error', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // Get Event by Group ID
 router.get('/group/:groupId', authMiddleware, async (req, res) => {
     try {
-        const event = await EventService.getEventByGroupId(req.params.groupId);
+        const event = await EventService.getEventByGroupId(req.params.groupId as string, req.user?.id);
         if (!event) return res.status(404).json({ error: 'Event not found' });
         res.json(event);
     } catch (e: any) {
@@ -122,7 +144,8 @@ router.get('/group/:groupId', authMiddleware, async (req, res) => {
 // Add Event Admin
 router.post('/:id/admins', authMiddleware, async (req, res) => {
     try {
-        await EventService.addEventAdmin(req.user!.id, req.params.id, req.body.userId);
+        // cast id to string for params
+        await EventService.addEventAdmin(req.user!.id, req.params.id as string, req.body.userId);
         res.json({ success: true });
     } catch (e: any) {
         console.error('Add event admin error', e);
@@ -133,7 +156,7 @@ router.post('/:id/admins', authMiddleware, async (req, res) => {
 // Add Event Organizer
 router.post('/:id/organizers', authMiddleware, async (req, res) => {
     try {
-        await EventService.addEventOrganizer(req.user!.id, req.params.id, req.body.userId);
+        await EventService.addEventOrganizer(req.user!.id, req.params.id as string, req.body.userId);
         res.json({ success: true });
     } catch (e: any) {
         console.error('Add event organizer error', e);

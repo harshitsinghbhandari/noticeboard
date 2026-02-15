@@ -18,6 +18,7 @@ export interface Event {
     updated_at: Date;
     cancelled_at?: Date;
     body_name?: string;
+    is_admin?: boolean;
 }
 
 export interface EventWithDistance extends Event {
@@ -130,28 +131,88 @@ export async function isOrganizer(groupId: string, userId: string): Promise<bool
     return (res.rowCount ?? 0) > 0;
 }
 
-export async function getEvent(eventId: string): Promise<Event | null> {
+export async function getEvent(eventId: string, userId?: string): Promise<Event | null> {
     const res = await pool.query(
         'SELECT e.*, b.name as body_name FROM events e LEFT JOIN bodies b ON e.body_id = b.id WHERE e.id = $1',
         [eventId]
     );
-    return res.rows[0] || null;
+    const event = res.rows[0];
+    if (!event) return null;
+
+    let isAdmin = false;
+    if (userId) {
+        const adminRes = await pool.query(
+            'SELECT 1 FROM event_admins WHERE event_id = $1 AND user_id = $2',
+            [eventId, userId]
+        );
+        isAdmin = (adminRes.rowCount ?? 0) > 0;
+        event.is_admin = isAdmin;
+    }
+
+    // Restrict draft events to admins only
+    if (event.status === 'draft' && !isAdmin) {
+        return null;
+    }
+
+    return event;
 }
 
-export async function getEventByGroupId(groupId: string): Promise<Event | null> {
+export async function getEventByGroupId(groupId: string, userId?: string): Promise<Event | null> {
     const res = await pool.query(
         'SELECT e.*, b.name as body_name FROM events e LEFT JOIN bodies b ON e.body_id = b.id WHERE e.group_id = $1',
         [groupId]
     );
-    return res.rows[0] || null;
+    const event = res.rows[0];
+    if (!event) return null;
+
+    let isAdmin = false;
+    if (userId) {
+        const adminRes = await pool.query(
+            'SELECT 1 FROM event_admins WHERE event_id = $1 AND user_id = $2',
+            [event.id, userId]
+        );
+        isAdmin = (adminRes.rowCount ?? 0) > 0;
+        event.is_admin = isAdmin;
+    }
+
+    // Restrict draft events to admins only
+    if (event.status === 'draft' && !isAdmin) {
+        return null;
+    }
+
+    return event;
 }
 
-export async function getEventsByBodyId(bodyId: string): Promise<Event[]> {
-    const res = await pool.query(
-        "SELECT * FROM events WHERE body_id = $1 AND status != 'cancelled' ORDER BY start_time ASC",
-        [bodyId]
-    );
-    return res.rows;
+export async function getEventsByBodyId(bodyId: string, userId?: string): Promise<Event[]> {
+    let isBodyAdminOrManager = false;
+
+    if (userId) {
+        const roleRes = await pool.query(
+            "SELECT role FROM body_memberships WHERE body_id = $1 AND user_id = $2",
+            [bodyId, userId]
+        );
+        const role = roleRes.rows[0]?.role;
+        isBodyAdminOrManager = role === 'BODY_ADMIN' || role === 'BODY_MANAGER';
+    }
+
+    if (isBodyAdminOrManager) {
+        const res = await pool.query(
+            "SELECT * FROM events WHERE body_id = $1 AND status != 'cancelled' ORDER BY start_time ASC",
+            [bodyId]
+        );
+        return res.rows;
+    } else {
+        const res = await pool.query(
+            `SELECT e.* FROM events e
+             LEFT JOIN event_admins ea ON e.id = ea.event_id AND ea.user_id = $2
+             WHERE e.body_id = $1
+             AND e.status != 'cancelled'
+             AND (e.status = 'published' OR ea.user_id IS NOT NULL)
+             ORDER BY e.start_time ASC`,
+            [bodyId, userId]
+        );
+        return res.rows;
+    }
 }
 
 export async function updateEvent(eventId: string, data: any): Promise<Event> {
@@ -250,6 +311,37 @@ export async function leaveEvent(userId: string, eventId: string): Promise<void>
         "UPDATE group_members SET status = 'left' WHERE group_id = $1 AND user_id = $2",
         [event.group_id, userId]
     );
+}
+
+export async function deleteEvent(eventId: string): Promise<void> {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        // Get group_id to delete group later
+        const eventRes = await client.query('SELECT group_id FROM events WHERE id = $1', [eventId]);
+        if (eventRes.rows.length === 0) {
+            throw new Error('Event not found');
+        }
+        const groupId = eventRes.rows[0].group_id;
+
+        // Delete event (CASCADE should handle admins/organizers if set up, currently manual)
+        await client.query('DELETE FROM event_admins WHERE event_id = $1', [eventId]);
+        await client.query('DELETE FROM event_organizers WHERE event_id = $1', [eventId]);
+        await client.query('DELETE FROM events WHERE id = $1', [eventId]);
+
+        // Delete group (CASCADE should handle members)
+        // If no CASCADE on group_members, we need to delete them first
+        await client.query('DELETE FROM group_members WHERE group_id = $1', [groupId]);
+        await client.query('DELETE FROM groups WHERE id = $1', [groupId]);
+
+        await client.query('COMMIT');
+    } catch (e) {
+        await client.query('ROLLBACK');
+        throw e;
+    } finally {
+        client.release();
+    }
 }
 
 export async function joinEvent(userId: string, eventId: string): Promise<void> {

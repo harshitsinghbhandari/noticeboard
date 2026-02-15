@@ -1,4 +1,5 @@
 import * as eventRepo from '../../infrastructure/db/event_repository';
+import * as groupRepo from '../../infrastructure/db/group_repository';
 import { checkBodyPermission, BodyAction, getMemberRole } from '../../infrastructure/db/body_repository';
 import { getUser } from '../../infrastructure/db/user_repository';
 import { io } from '../server';
@@ -61,12 +62,19 @@ export class EventService {
         await eventRepo.cancelEvent(eventId);
     }
 
-    static async getEvent(eventId: string) {
-        return await eventRepo.getEvent(eventId);
+    static async deleteEvent(userId: string, eventId: string) {
+        const isAdmin = await eventRepo.isEventAdmin(eventId, userId);
+        if (!isAdmin) throw new Error('Forbidden: Only event admin can delete');
+
+        await eventRepo.deleteEvent(eventId);
     }
 
-    static async getEventByGroupId(groupId: string) {
-        return await eventRepo.getEventByGroupId(groupId);
+    static async getEvent(eventId: string, userId?: string) {
+        return await eventRepo.getEvent(eventId, userId);
+    }
+
+    static async getEventByGroupId(groupId: string, userId?: string) {
+        return await eventRepo.getEventByGroupId(groupId, userId);
     }
 
     static async listEvents(lat: number, lng: number, radius: number) {
@@ -96,5 +104,11 @@ export class EventService {
         if (!targetUser) throw new Error('Target user not found');
 
         await eventRepo.addEventOrganizer(eventId, targetUserId);
+    }
+
+    static async getEventAttendees(eventId: string) {
+        const event = await eventRepo.getEvent(eventId);
+        if (!event) throw new Error('Event not found');
+        return await groupRepo.getGroupMembers(event.group_id);
     }
 }
