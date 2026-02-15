@@ -28,3 +28,8 @@ export const markGroupRead = (groupId: string) =>
 
 export const getUserContext = (userId: string) =>
     apiClient.get(`/users/${userId}`);
+
+import type { User } from '../../../types';
+
+export const searchUsers = (query: string) =>
+    apiClient.get<User[]>(`/users/search?q=${encodeURIComponent(query)}`);

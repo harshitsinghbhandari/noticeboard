@@ -84,7 +84,7 @@ router.delete('/:id', authMiddleware, async (req, res) => {
 // Discover Events
 router.get('/', authMiddleware, async (req, res) => {
     try {
-        const { lat, lng, radius } = req.query;
+        const { lat, lng, radius, type } = req.query;
         // Helper to safely parse float from query param
         const parseQueryParam = (param: any, defaultVal: number): number => {
             if (!param) return defaultVal;
@@ -95,11 +95,13 @@ router.get('/', authMiddleware, async (req, res) => {
         const userLat = parseQueryParam(lat, 19.1240);
         const userLng = parseQueryParam(lng, 72.9112);
         const searchRadius = parseQueryParam(radius, 50000);
+        const eventType = Array.isArray(type) ? type[0] as string : type as string;
 
         const events = await EventService.listEvents(
             userLat,
             userLng,
-            searchRadius
+            searchRadius,
+            eventType
         );
         res.json(events);
     } catch (e: any) {

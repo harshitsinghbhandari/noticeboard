@@ -14,6 +14,7 @@ export interface Event {
     end_time: Date;
     capacity: number | null;
     status: 'draft' | 'published' | 'cancelled' | 'completed';
+    event_type: 'sports' | 'tech' | 'cult' | 'acad' | 'others';
     created_at: Date;
     updated_at: Date;
     cancelled_at?: Date;
@@ -26,7 +27,7 @@ export interface EventWithDistance extends Event {
 }
 
 export async function createEvent(userId: string, data: any): Promise<Event> {
-    const { bodyId, title, description, location_name, latitude, longitude, start_time, end_time, capacity } = data;
+    const { bodyId, title, description, location_name, latitude, longitude, start_time, end_time, capacity, event_type = 'others' } = data;
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -43,9 +44,9 @@ export async function createEvent(userId: string, data: any): Promise<Event> {
 
         // 2. Insert event row
         const eventRes = await client.query(
-            `INSERT INTO events (body_id, group_id, title, description, location_name, latitude, longitude, start_time, end_time, capacity, status)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'draft') RETURNING *`,
-            [bodyId, groupId, title, description, location_name, latitude, longitude, start_time, end_time, capacity]
+            `INSERT INTO events (body_id, group_id, title, description, location_name, latitude, longitude, start_time, end_time, capacity, status, event_type)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'draft', $11) RETURNING *`,
+            [bodyId, groupId, title, description, location_name, latitude, longitude, start_time, end_time, capacity, event_type]
         );
         const event = eventRes.rows[0];
 
@@ -72,8 +73,8 @@ export async function createEvent(userId: string, data: any): Promise<Event> {
     }
 }
 
-export async function listEvents(lat: number, lng: number, radius: number): Promise<EventWithDistance[]> {
-    const query = `
+export async function listEvents(lat: number, lng: number, radius: number, eventType?: string): Promise<EventWithDistance[]> {
+    let query = `
         SELECT e.*, b.name as body_name, (
             6371 * acos(
                 cos(radians($1)) * cos(radians(e.latitude)) *
@@ -91,10 +92,18 @@ export async function listEvents(lat: number, lng: number, radius: number): Prom
                 sin(radians($1)) * sin(radians(e.latitude))
             )
         ) <= $3
-        ORDER BY distance ASC
-        LIMIT 50
     `;
-    const res = await pool.query(query, [lat, lng, radius]);
+
+    const params: any[] = [lat, lng, radius];
+
+    if (eventType && eventType !== 'all') {
+        query += ` AND e.event_type = $4`;
+        params.push(eventType);
+    }
+
+    query += ` ORDER BY distance ASC LIMIT 50`;
+
+    const res = await pool.query(query, params);
     return res.rows;
 }
 
@@ -228,7 +237,7 @@ export async function updateEvent(eventId: string, data: any): Promise<Event> {
             throw new Error('Only draft or published events can be updated');
         }
 
-        const { title, description, location_name, latitude, longitude, start_time, end_time, capacity } = data;
+        const { title, description, location_name, latitude, longitude, start_time, end_time, capacity, event_type } = data;
 
         if (capacity !== undefined && capacity !== event.capacity) {
             const countRes = await client.query(
@@ -257,9 +266,10 @@ export async function updateEvent(eventId: string, data: any): Promise<Event> {
                 start_time = COALESCE($6, start_time),
                 end_time = COALESCE($7, end_time),
                 capacity = $8,
+                event_type = COALESCE($9, event_type),
                 updated_at = NOW()
-             WHERE id = $9 RETURNING *`,
-            [title, description, location_name, latitude, longitude, start_time, end_time, capacity === undefined ? event.capacity : capacity, eventId]
+             WHERE id = $10 RETURNING *`,
+            [title, description, location_name, latitude, longitude, start_time, end_time, capacity === undefined ? event.capacity : capacity, event_type, eventId]
         );
 
         await client.query('COMMIT');

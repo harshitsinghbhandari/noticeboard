@@ -77,8 +77,8 @@ export class EventService {
         return await eventRepo.getEventByGroupId(groupId, userId);
     }
 
-    static async listEvents(lat: number, lng: number, radius: number) {
-        return await eventRepo.listEvents(lat, lng, radius);
+    static async listEvents(lat: number, lng: number, radius: number, eventType?: string) {
+        return await eventRepo.listEvents(lat, lng, radius, eventType);
     }
 
     static async addEventAdmin(userId: string, eventId: string, targetUserId: string) {

@@ -12,11 +12,13 @@ export default function Connections({ currentUserId }: ConnectionsProps) {
     const navigate = useNavigate();
     const {
         incoming,
+        outgoing,
         myConnections,
         handleRequestConnection,
         handleRespondToRequest
     } = useConnections();
 
+    const [activeTab, setActiveTab] = useState<'incoming' | 'sent'>('incoming');
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
 
@@ -77,34 +79,73 @@ export default function Connections({ currentUserId }: ConnectionsProps) {
                         Friend Requests
                     </h3>
                     <div className="flex bg-primary/10 p-1 rounded-lg">
-                        <button className="px-3 py-1 text-xs font-bold rounded-md bg-primary text-white">Incoming ({incoming.length})</button>
-                        <button className="px-3 py-1 text-xs font-medium text-primary/60 hover:text-white transition-colors">Sent</button>
+                        <button
+                            onClick={() => setActiveTab('incoming')}
+                            className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${activeTab === 'incoming' ? 'bg-primary text-white' : 'text-primary/60 hover:text-white'}`}
+                        >
+                            Incoming ({incoming.length})
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('sent')}
+                            className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${activeTab === 'sent' ? 'bg-primary text-white' : 'text-primary/60 hover:text-white'}`}
+                        >
+                            Sent ({outgoing.length})
+                        </button>
                     </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {incoming.map((req) => (
-                        <div key={req.id} className="flex items-center justify-between p-4 bg-primary/5 border border-primary/10 rounded-xl hover:border-primary/30 transition-all">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-full bg-slate-700 border-2 border-primary/20 flex items-center justify-center text-white font-bold">
-                                    {req.requester_first_name?.[0]}
-                                </div>
-                                <div>
-                                    <p className="font-bold text-white">{req.requester_first_name} {req.requester_last_name}</p>
-                                    <div className="flex gap-2 mt-0.5">
-                                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/20 text-primary font-bold uppercase tracking-wider">{req.requester_headline || 'Campus'}</span>
+                    {activeTab === 'incoming' ? (
+                        incoming.length === 0 ? (
+                            <div className="col-span-full py-8 text-center text-sm text-slate-500">No incoming requests</div>
+                        ) : (
+                            incoming.map((req) => (
+                                <div key={req.id} className="flex items-center justify-between p-4 bg-primary/5 border border-primary/10 rounded-xl hover:border-primary/30 transition-all">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-full bg-slate-700 border-2 border-primary/20 flex items-center justify-center text-white font-bold">
+                                            {req.requester_first_name?.[0]}
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-white">{req.requester_first_name} {req.requester_last_name}</p>
+                                            <div className="flex gap-2 mt-0.5">
+                                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/20 text-primary font-bold uppercase tracking-wider">{req.requester_headline || 'Campus'}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => handleRespondToRequest(req.id, 'accept')} className="p-2 bg-primary text-white rounded-lg hover:bg-primary/80 transition-colors">
+                                            <span className="material-symbols-outlined text-sm">check</span>
+                                        </button>
+                                        <button onClick={() => handleRespondToRequest(req.id, 'reject')} className="p-2 bg-white/5 text-white/40 hover:text-white/80 rounded-lg transition-colors">
+                                            <span className="material-symbols-outlined text-sm">close</span>
+                                        </button>
                                     </div>
                                 </div>
-                            </div>
-                            <div className="flex gap-2">
-                                <button onClick={() => handleRespondToRequest(req.id, 'accept')} className="p-2 bg-primary text-white rounded-lg hover:bg-primary/80 transition-colors">
-                                    <span className="material-symbols-outlined text-sm">check</span>
-                                </button>
-                                <button onClick={() => handleRespondToRequest(req.id, 'reject')} className="p-2 bg-white/5 text-white/40 hover:text-white/80 rounded-lg transition-colors">
-                                    <span className="material-symbols-outlined text-sm">close</span>
-                                </button>
-                            </div>
-                        </div>
-                    ))}
+                            ))
+                        )
+                    ) : (
+                        outgoing.length === 0 ? (
+                            <div className="col-span-full py-8 text-center text-sm text-slate-500">No sent requests</div>
+                        ) : (
+                            outgoing.map((req) => (
+                                <div key={req.id} className="flex items-center justify-between p-4 bg-primary/5 border border-primary/10 rounded-xl hover:border-primary/30 transition-all">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-full bg-slate-700 border-2 border-primary/20 flex items-center justify-center text-white font-bold">
+                                            {req.receiver_first_name?.[0]}
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-white">{req.receiver_first_name} {req.receiver_last_name}</p>
+                                            <div className="flex gap-2 mt-0.5">
+                                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/20 text-primary font-bold uppercase tracking-wider">{req.receiver_headline || 'Student'}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="px-3 py-1 bg-white/5 text-white/40 text-xs font-bold rounded-lg border border-white/10">
+                                        Pending
+                                    </div>
+                                </div>
+                            ))
+                        )
+                    )}
                 </div>
             </section>
 
@@ -118,7 +159,7 @@ export default function Connections({ currentUserId }: ConnectionsProps) {
                     <button className="text-sm font-semibold text-primary hover:underline">See all</button>
                 </div>
                 <div className="flex overflow-x-auto gap-4 pb-4 hide-scrollbar -mx-4 px-4 snap-x">
-                    {[1,2,3,4].map(i => (
+                    {[1, 2, 3, 4].map(i => (
                         <div key={i} className="flex-none w-48 bg-primary/5 border border-primary/10 rounded-xl p-4 snap-start group hover:bg-primary/10 transition-all">
                             <div className="relative mb-3 aspect-square bg-slate-800 rounded-lg flex items-center justify-center">
                                 <span className="material-symbols-outlined text-primary text-4xl">person</span>

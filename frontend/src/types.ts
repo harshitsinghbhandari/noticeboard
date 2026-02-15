@@ -25,6 +25,15 @@ export interface Post {
     body_name?: string;
 }
 
+export interface User {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    headline?: string;
+    profile_image_url?: string;
+}
+
 export interface UserProfile {
     id: string;
     email: string;
@@ -181,6 +190,7 @@ export interface Event {
     end_time: string;
     capacity: number | null;
     status: 'draft' | 'published' | 'cancelled' | 'completed';
+    event_type: 'sports' | 'tech' | 'cult' | 'acad' | 'others';
     created_at: string;
     updated_at: string;
     cancelled_at?: string;

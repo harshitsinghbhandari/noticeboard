@@ -51,6 +51,7 @@ export default function BodyProfile() {
     const [newEventStartTime, setNewEventStartTime] = useState('');
     const [newEventEndTime, setNewEventEndTime] = useState('');
     const [newEventCapacity, setNewEventCapacity] = useState('');
+    const [newEventType, setNewEventType] = useState<'sports' | 'tech' | 'cult' | 'acad' | 'others'>('others');
 
     const [showCreateOpening, setShowCreateOpening] = useState(false);
     const [newOpeningTitle, setNewOpeningTitle] = useState('');
@@ -98,7 +99,8 @@ export default function BodyProfile() {
                 longitude: 0,
                 start_time: new Date(newEventStartTime).toISOString(),
                 end_time: new Date(newEventEndTime).toISOString(),
-                capacity: newEventCapacity ? parseInt(newEventCapacity) : null
+                capacity: newEventCapacity ? parseInt(newEventCapacity) : null,
+                event_type: newEventType
             };
 
             if (editingEvent) {
@@ -118,6 +120,7 @@ export default function BodyProfile() {
             setNewEventStartTime('');
             setNewEventEndTime('');
             setNewEventCapacity('');
+            setNewEventType('others');
 
             fetchBodyData();
         } catch (err: unknown) {
@@ -316,6 +319,7 @@ export default function BodyProfile() {
                                                 setNewEventStartTime('');
                                                 setNewEventEndTime('');
                                                 setNewEventCapacity('');
+                                                setNewEventType('others');
                                                 setShowCreateEvent(true);
                                             }}>+ New Event</Button>}
                                         </div>
@@ -330,6 +334,8 @@ export default function BodyProfile() {
                                                         <h4 className="text-lg font-bold text-white group-hover:text-primary transition-colors">{event.title}</h4>
                                                         <div className="flex items-center gap-3 mt-1 text-slate-500 text-xs">
                                                             <span className="flex items-center gap-1"><span className="material-symbols-outlined text-sm">location_on</span> {event.location_name}</span>
+                                                            <span>•</span>
+                                                            <span className="capitalize px-1.5 py-0.5 rounded bg-primary/10 text-primary">{event.event_type || 'others'}</span>
                                                             <span>•</span>
                                                             <span>{new Date(event.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                                         </div>
@@ -347,6 +353,7 @@ export default function BodyProfile() {
                                                                 setNewEventStartTime(new Date(event.start_time).toISOString().slice(0, 16));
                                                                 setNewEventEndTime(new Date(event.end_time).toISOString().slice(0, 16));
                                                                 setNewEventCapacity(event.capacity ? event.capacity.toString() : '');
+                                                                setNewEventType(event.event_type || 'others');
                                                                 setShowCreateEvent(true);
                                                             }}
                                                             className="p-1.5 bg-slate-700 text-white rounded-lg hover:bg-slate-600"
@@ -441,6 +448,22 @@ export default function BodyProfile() {
                         <form onSubmit={handleCreateEvent} className="space-y-4">
                             <input className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none" placeholder="Event Title" value={newEventTitle} onChange={e => setNewEventTitle(e.target.value)} required />
                             <textarea className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none" placeholder="Description" rows={3} value={newEventDesc} onChange={e => setNewEventDesc(e.target.value)} required />
+
+                            <div>
+                                <label className="text-xs text-slate-500 font-bold mb-1 block">Category</label>
+                                <select
+                                    className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none appearance-none"
+                                    value={newEventType}
+                                    onChange={e => setNewEventType(e.target.value as any)}
+                                >
+                                    <option value="others" className="bg-slate-900">Other</option>
+                                    <option value="sports" className="bg-slate-900">Sports</option>
+                                    <option value="tech" className="bg-slate-900">Tech</option>
+                                    <option value="cult" className="bg-slate-900">Cultural</option>
+                                    <option value="acad" className="bg-slate-900">Academic</option>
+                                </select>
+                            </div>
+
                             <input className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none" placeholder="Location Name" value={newEventLocation} onChange={e => setNewEventLocation(e.target.value)} required />
                             <div className="grid grid-cols-2 gap-4">
                                 <div>

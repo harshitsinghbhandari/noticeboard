@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import * as connectionsApi from '../api/connections';
 import { useApi } from '../../../hooks/useApi';
+import { socket } from '../../../utils/socket';
 
 export const useConnections = () => {
     const {
@@ -35,6 +36,20 @@ export const useConnections = () => {
 
     useEffect(() => {
         fetchConnections();
+
+        const handleUpdate = () => {
+            fetchConnections();
+        };
+
+        socket.on('connection:request', handleUpdate);
+        socket.on('connection:accepted', handleUpdate);
+        socket.on('connection:rejected', handleUpdate);
+
+        return () => {
+            socket.off('connection:request', handleUpdate);
+            socket.off('connection:accepted', handleUpdate);
+            socket.off('connection:rejected', handleUpdate);
+        };
     }, [fetchConnections]);
 
     const { execute: executeRequest } = useApi(connectionsApi.requestConnection);

@@ -1,7 +1,7 @@
 import apiClient from '../../../api/client';
 import type { Event, UserProfile } from '../../../types';
 
-export const getEvents = (params?: { lat?: number; lng?: number; radius?: number }) =>
+export const getEvents = (params?: { lat?: number; lng?: number; radius?: number; type?: string }) =>
     apiClient.get<Event[]>('/events', { params });
 
 export const getEventById = (id: string) =>

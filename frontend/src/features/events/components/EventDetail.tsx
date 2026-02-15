@@ -43,7 +43,7 @@ export default function EventDetail({ currentUserId }: EventDetailProps) {
                     alt="Event Hero"
                 />
                 <div className="absolute bottom-4 left-4 z-20">
-                    <span className="px-3 py-1 bg-primary text-white text-xs font-bold rounded-full uppercase tracking-wider">Music & Arts</span>
+                    <span className="px-3 py-1 bg-primary text-white text-xs font-bold rounded-full uppercase tracking-wider">{event.event_type || 'Event'}</span>
                     <h2 className="text-white text-3xl md:text-4xl font-extrabold mt-2 leading-tight">{event.title}</h2>
                     <p className="text-white/80 text-sm font-medium mt-1">Organized by {event.body_name || event.body_id} • Campus</p>
                 </div>

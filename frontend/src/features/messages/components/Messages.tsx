@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import type { Group, GroupMessage, Message, Event } from '../../../types';
+import type { Group, GroupMessage, Message, Event, User } from '../../../types';
 import { useConversations } from '../hooks/useConversations';
 import { useChat } from '../hooks/useChat';
 import apiClient from '../../../api/client';
+import { searchUsers } from '../api/messages';
 import CreateGroupModal from './CreateGroupModal';
 import { UnreadContext } from '../../../context/UnreadContextCore';
 
@@ -20,7 +21,7 @@ export default function Messages({ currentUserId }: MessagesProps) {
     const { totalUnread, unreadBySender } = useContext(UnreadContext)!;
 
     const [chatView, setChatView] = useState<ChatView>(urlType === 'group' ? 'groups' : 'dms');
-    const [selectedChat, setSelectedChat] = useState<{ id: string, type: 'user' | 'group' } | null>(
+    const [selectedChat, setSelectedChat] = useState<{ id: string, type: 'user' | 'group', data?: User } | null>(
         urlId && (urlType === 'user' || urlType === 'group') ? { id: urlId, type: urlType as 'user' | 'group' } : null
     );
 
@@ -45,6 +46,30 @@ export default function Messages({ currentUserId }: MessagesProps) {
     const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
     const [activeEvent, setActiveEvent] = useState<Event | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    // Search State
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState<User[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+
+    useEffect(() => {
+        const timer = setTimeout(async () => {
+            if (searchQuery.trim().length >= 2) {
+                setIsSearching(true);
+                try {
+                    const res = await searchUsers(searchQuery);
+                    setSearchResults(res.data);
+                } catch (e) {
+                    console.error(e);
+                } finally {
+                    setIsSearching(false);
+                }
+            } else {
+                setSearchResults([]);
+            }
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -118,7 +143,9 @@ export default function Messages({ currentUserId }: MessagesProps) {
         ? groups.find(g => g.id === selectedChat.id)
         : conversations.find(c => c.other_id === selectedChat?.id);
 
-    const otherUser = selectedChat?.type === 'user' ? conversations.find(c => c.other_id === selectedChat.id) : null;
+    const otherUser = selectedChat?.type === 'user'
+        ? (conversations.find(c => c.other_id === selectedChat.id) || selectedChat.data)
+        : null;
 
     const formatDateHeader = (dateStr: string) => {
         const date = new Date(dateStr);
@@ -150,111 +177,160 @@ export default function Messages({ currentUserId }: MessagesProps) {
                     </button>
                 </div>
 
-                {/* Toggle Switch */}
-                <div className="p-4 border-b border-slate-200 dark:border-white/5">
-                    <div className="flex bg-slate-100 dark:bg-[#251832] p-1 rounded-lg">
-                        <button
-                            onClick={() => setChatView('groups')}
-                            className={`flex-1 py-1.5 text-sm font-semibold rounded-md transition-all ${chatView === 'groups' ? 'bg-white dark:bg-primary text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-200'}`}
-                        >
-                            Groups
-                        </button>
-                        <button
-                            onClick={() => setChatView('dms')}
-                            className={`flex-1 py-1.5 text-sm font-semibold rounded-md transition-all ${chatView === 'dms' ? 'bg-white dark:bg-primary text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-200'}`}
-                        >
-                            DMs
-                        </button>
+                <div className="px-4 pb-2 border-b border-slate-200 dark:border-white/5">
+                    <div className="relative">
+                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+                        <input
+                            type="text"
+                            placeholder="Search people..."
+                            className="w-full bg-slate-100 dark:bg-[#251832] text-slate-900 dark:text-white text-xs py-2 pl-9 pr-4 rounded-lg outline-none focus:ring-1 focus:ring-primary placeholder-slate-400"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
                     </div>
                 </div>
 
-                {/* List */}
-                <div className="flex-1 overflow-y-auto hide-scrollbar">
-                    {chatView === 'groups' ? (
-                        <div className="py-2">
-                            <div className="px-4 py-2 flex items-center justify-between">
-                                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Event Chats</h3>
-                                <span className="material-symbols-outlined text-slate-400 text-sm">stars</span>
-                            </div>
-                            {groups.filter(g => g.type === 'event').map((group, idx) => (
-                                <div key={group.id} onClick={() => setSelectedChat({ id: group.id, type: 'group' })} className={`px-2 mb-1 cursor-pointer`}>
-                                    <div className={`p-3 flex gap-3 rounded-xl transition-all group ${selectedChat?.id === group.id ? 'bg-primary/15 border border-primary/20' : 'hover:bg-primary/10'}`}>
-                                        <div className="relative w-14 h-14 rounded-lg overflow-hidden shrink-0 border border-primary/30 bg-slate-800 flex items-center justify-center">
-                                            <img src={idx === 0 ? "https://lh3.googleusercontent.com/aida-public/AB6AXuBtc3tFHfPABe8iDfb6N7R1VNCKJtcY701c9dNv6u_gKPIKhuzVjLWbzPwjF7GJ3vSG5nSqcxX1MFCq80q6iTiFTR-v4tS09fUQXtNz9OsGvV3BSeTEO59vgZiipOLdPkvCeP6VDmfCu_jlItxE83cgQ4Vbo_bP1ApsReb5oRY5cZr_T_vOVXI1-C10qpQIzv9F6hrR4jriO-HUUy-TFkxR0_hVaF7ivNTS4yFSIZauJdReoxkGcul5iDERKp1lLa7rNnCUXF1bh4o" : "https://lh3.googleusercontent.com/aida-public/AB6AXuBZWwp20A0jt6t_RvnDvabwMDbBxzeQsOQpWzsJLYl4AjvCSas_QsJp5arZiNbdcgFadmfO3r7vR6cO1hHcGIzaCcDn3JQ48noLCnQkvWsymc5hu9M4r4knN2Q3GkO6UlB_GzxUF9jPCbDKKT8YhmQmES-ozyTClCluMGyr5Mg41GO8RNVbg7uAJ_OYu8fA_Z3pOM4bAXKfV2kTswmo9shNltJ-H90raZJJvxbGv11pxVORgQYQjHNRwX83oiUjAY47RxlfvuuC7Pg"} className="w-full h-full object-cover" alt={group.name} />
-                                            <div className="absolute inset-0 bg-gradient-to-t from-primary/60 to-transparent"></div>
+                {searchQuery.trim().length >= 2 ? (
+                    <div className="flex-1 overflow-y-auto hide-scrollbar py-2">
+                        <div className="px-4 py-2">
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Search Results</h3>
+                        </div>
+                        {isSearching ? (
+                            <div className="px-4 text-xs text-slate-400">Searching...</div>
+                        ) : searchResults.length === 0 ? (
+                            <div className="px-4 text-xs text-slate-400">No users found</div>
+                        ) : (
+                            searchResults.map(user => (
+                                <div key={user.id} onClick={() => {
+                                    setSelectedChat({ id: user.id, type: 'user', data: user });
+                                    setSearchQuery('');
+                                    setChatView('dms');
+                                }} className="px-2">
+                                    <div className="p-3 flex items-center gap-3 rounded-xl cursor-pointer hover:bg-white/5 transition-all">
+                                        <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center shrink-0 text-primary font-bold overflow-hidden">
+                                            {user.profile_image_url ?
+                                                <img src={user.profile_image_url} alt={user.first_name} className="w-full h-full object-cover" /> :
+                                                user.first_name[0]
+                                            }
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <div className="flex justify-between items-start">
-                                                <h4 className="font-bold text-sm truncate text-white">{group.name}</h4>
-                                                {group.is_active && (
-                                                    <span className="text-[10px] font-bold text-primary flex items-center gap-1 shrink-0">
-                                                        <span className="relative flex h-2 w-2">
-                                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                                                            <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                                            <h4 className="font-semibold text-sm truncate text-white">{user.first_name} {user.last_name}</h4>
+                                            <p className="text-xs text-slate-400 truncate">{user.email}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                ) : (
+                    <>
+                        {/* Toggle Switch */}
+                        <div className="p-4 border-b border-slate-200 dark:border-white/5">
+                            <div className="flex bg-slate-100 dark:bg-[#251832] p-1 rounded-lg">
+                                <button
+                                    onClick={() => setChatView('groups')}
+                                    className={`flex-1 py-1.5 text-sm font-semibold rounded-md transition-all ${chatView === 'groups' ? 'bg-white dark:bg-primary text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-200'}`}
+                                >
+                                    Groups
+                                </button>
+                                <button
+                                    onClick={() => setChatView('dms')}
+                                    className={`flex-1 py-1.5 text-sm font-semibold rounded-md transition-all ${chatView === 'dms' ? 'bg-white dark:bg-primary text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-200'}`}
+                                >
+                                    DMs
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* List */}
+                        <div className="flex-1 overflow-y-auto hide-scrollbar">
+                            {chatView === 'groups' ? (
+                                <div className="py-2">
+                                    <div className="px-4 py-2 flex items-center justify-between">
+                                        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Event Chats</h3>
+                                        <span className="material-symbols-outlined text-slate-400 text-sm">stars</span>
+                                    </div>
+                                    {groups.filter(g => g.type === 'event').map((group, idx) => (
+                                        <div key={group.id} onClick={() => setSelectedChat({ id: group.id, type: 'group' })} className={`px-2 mb-1 cursor-pointer`}>
+                                            <div className={`p-3 flex gap-3 rounded-xl transition-all group ${selectedChat?.id === group.id ? 'bg-primary/15 border border-primary/20' : 'hover:bg-primary/10'}`}>
+                                                <div className="relative w-14 h-14 rounded-lg overflow-hidden shrink-0 border border-primary/30 bg-slate-800 flex items-center justify-center">
+                                                    <img src={idx === 0 ? "https://lh3.googleusercontent.com/aida-public/AB6AXuBtc3tFHfPABe8iDfb6N7R1VNCKJtcY701c9dNv6u_gKPIKhuzVjLWbzPwjF7GJ3vSG5nSqcxX1MFCq80q6iTiFTR-v4tS09fUQXtNz9OsGvV3BSeTEO59vgZiipOLdPkvCeP6VDmfCu_jlItxE83cgQ4Vbo_bP1ApsReb5oRY5cZr_T_vOVXI1-C10qpQIzv9F6hrR4jriO-HUUy-TFkxR0_hVaF7ivNTS4yFSIZauJdReoxkGcul5iDERKp1lLa7rNnCUXF1bh4o" : "https://lh3.googleusercontent.com/aida-public/AB6AXuBZWwp20A0jt6t_RvnDvabwMDbBxzeQsOQpWzsJLYl4AjvCSas_QsJp5arZiNbdcgFadmfO3r7vR6cO1hHcGIzaCcDn3JQ48noLCnQkvWsymc5hu9M4r4knN2Q3GkO6UlB_GzxUF9jPCbDKKT8YhmQmES-ozyTClCluMGyr5Mg41GO8RNVbg7uAJ_OYu8fA_Z3pOM4bAXKfV2kTswmo9shNltJ-H90raZJJvxbGv11pxVORgQYQjHNRwX83oiUjAY47RxlfvuuC7Pg"} className="w-full h-full object-cover" alt={group.name} />
+                                                    <div className="absolute inset-0 bg-gradient-to-t from-primary/60 to-transparent"></div>
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex justify-between items-start">
+                                                        <h4 className="font-bold text-sm truncate text-white">{group.name}</h4>
+                                                        {group.is_active && (
+                                                            <span className="text-[10px] font-bold text-primary flex items-center gap-1 shrink-0">
+                                                                <span className="relative flex h-2 w-2">
+                                                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                                                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                                                                </span>
+                                                                ACTIVE
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-xs text-slate-400 truncate mt-0.5">
+                                                        {group.last_message ? `${group.last_message.sender_first_name}: ${group.last_message.content}` : 'No messages yet'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    <div className="px-4 py-2 mt-2">
+                                        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">General Groups</h3>
+                                    </div>
+                                    {groups.filter(g => g.type !== 'event').map(group => (
+                                        <div key={group.id} onClick={() => setSelectedChat({ id: group.id, type: 'group' })} className="px-2">
+                                            <div className={`p-3 flex items-center gap-3 rounded-xl cursor-pointer transition-all ${selectedChat?.id === group.id ? 'bg-white/10' : 'hover:bg-white/5'}`}>
+                                                <div className="w-12 h-12 rounded-lg bg-indigo-500/20 flex items-center justify-center shrink-0 border border-indigo-500/30 text-indigo-500">
+                                                    <span className="material-symbols-outlined">terminal</span>
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex justify-between items-center">
+                                                        <h4 className="font-semibold text-sm truncate text-white">{group.name}</h4>
+                                                        <span className="text-[10px] text-slate-500">14:05</span>
+                                                    </div>
+                                                    <p className="text-xs text-slate-400 truncate">
+                                                        {group.last_message?.content || 'Join the conversation'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="py-2">
+                                    {conversations.map(conv => (
+                                        <div key={conv.other_id} onClick={() => setSelectedChat({ id: conv.other_id, type: 'user' })} className="px-2">
+                                            <div className={`p-3 flex items-center gap-3 rounded-xl cursor-pointer transition-all ${selectedChat?.id === conv.other_id ? 'bg-white/10' : 'hover:bg-white/5'}`}>
+                                                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center shrink-0 text-primary font-bold relative">
+                                                    {conv.first_name[0]}
+                                                    {(unreadBySender[conv.other_id] || 0) > 0 && (
+                                                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-[#1a1625]">
+                                                            {unreadBySender[conv.other_id]}
                                                         </span>
-                                                        ACTIVE
-                                                    </span>
-                                                )}
+                                                    )}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex justify-between items-center">
+                                                        <h4 className={`font-semibold text-sm truncate text-white ${(unreadBySender[conv.other_id] || 0) > 0 ? 'font-black' : ''}`}>
+                                                            {conv.first_name} {conv.last_name}
+                                                        </h4>
+                                                        <span className="text-[10px] text-slate-500">Now</span>
+                                                    </div>
+                                                    <p className={`text-xs text-slate-400 truncate ${(unreadBySender[conv.other_id] || 0) > 0 ? 'font-bold text-white' : ''}`}>
+                                                        {conv.message_text}
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <p className="text-xs text-slate-400 truncate mt-0.5">
-                                                {group.last_message ? `${group.last_message.sender_first_name}: ${group.last_message.content}` : 'No messages yet'}
-                                            </p>
                                         </div>
-                                    </div>
+                                    ))}
                                 </div>
-                            ))}
-                            <div className="px-4 py-2 mt-2">
-                                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">General Groups</h3>
-                            </div>
-                            {groups.filter(g => g.type !== 'event').map(group => (
-                                <div key={group.id} onClick={() => setSelectedChat({ id: group.id, type: 'group' })} className="px-2">
-                                    <div className={`p-3 flex items-center gap-3 rounded-xl cursor-pointer transition-all ${selectedChat?.id === group.id ? 'bg-white/10' : 'hover:bg-white/5'}`}>
-                                        <div className="w-12 h-12 rounded-lg bg-indigo-500/20 flex items-center justify-center shrink-0 border border-indigo-500/30 text-indigo-500">
-                                            <span className="material-symbols-outlined">terminal</span>
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex justify-between items-center">
-                                                <h4 className="font-semibold text-sm truncate text-white">{group.name}</h4>
-                                                <span className="text-[10px] text-slate-500">14:05</span>
-                                            </div>
-                                            <p className="text-xs text-slate-400 truncate">
-                                                {group.last_message?.content || 'Join the conversation'}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
+                            )}
                         </div>
-                    ) : (
-                        <div className="py-2">
-                            {conversations.map(conv => (
-                                <div key={conv.other_id} onClick={() => setSelectedChat({ id: conv.other_id, type: 'user' })} className="px-2">
-                                    <div className={`p-3 flex items-center gap-3 rounded-xl cursor-pointer transition-all ${selectedChat?.id === conv.other_id ? 'bg-white/10' : 'hover:bg-white/5'}`}>
-                                        <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center shrink-0 text-primary font-bold relative">
-                                            {conv.first_name[0]}
-                                            {(unreadBySender[conv.other_id] || 0) > 0 && (
-                                                <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-[#1a1625]">
-                                                    {unreadBySender[conv.other_id]}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex justify-between items-center">
-                                                <h4 className={`font-semibold text-sm truncate text-white ${(unreadBySender[conv.other_id] || 0) > 0 ? 'font-black' : ''}`}>
-                                                    {conv.first_name} {conv.last_name}
-                                                </h4>
-                                                <span className="text-[10px] text-slate-500">Now</span>
-                                            </div>
-                                            <p className={`text-xs text-slate-400 truncate ${(unreadBySender[conv.other_id] || 0) > 0 ? 'font-bold text-white' : ''}`}>
-                                                {conv.message_text}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
+                    </>
+                )}
             </aside>
 
             {/* Active Chat Content */}

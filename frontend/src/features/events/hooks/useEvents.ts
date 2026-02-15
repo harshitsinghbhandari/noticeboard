@@ -11,9 +11,13 @@ export function useEvents() {
     } = useApi(eventsApi.getEvents);
 
     useEffect(() => {
+        // Initial fetch handled by component or if needed here without filters
+        // But better to expose a refetch that allows params
+    }, []);
+
+    const fetchEventsWithLocation = (filters?: { type?: string }) => {
         if (!navigator.geolocation) {
-            // Geolocation not supported, use default (Mumbai)
-            fetchEvents({ lat: 19.1240, lng: 72.9112, radius: 50000 });
+            fetchEvents({ lat: 19.1240, lng: 72.9112, radius: 50000, ...filters });
             return;
         }
 
@@ -22,21 +26,26 @@ export function useEvents() {
                 fetchEvents({
                     lat: position.coords.latitude,
                     lng: position.coords.longitude,
-                    radius: 50000
+                    radius: 50000,
+                    ...filters
                 });
             },
             (error) => {
                 console.warn("Geolocation denied or error, using default location", error);
-                // Default to Mumbai on error
-                fetchEvents({ lat: 19.1240, lng: 72.9112, radius: 50000 });
+                fetchEvents({ lat: 19.1240, lng: 72.9112, radius: 50000, ...filters });
             }
         );
-    }, [fetchEvents]);
+    };
+
+    // Initial load
+    useEffect(() => {
+        fetchEventsWithLocation();
+    }, []);
 
     return {
         events: events || [],
         isLoading,
         error,
-        refreshEvents: fetchEvents
+        refreshEvents: fetchEventsWithLocation
     };
 }

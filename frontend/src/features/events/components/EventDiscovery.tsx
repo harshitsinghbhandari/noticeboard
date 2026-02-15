@@ -6,8 +6,9 @@ import { joinEvent } from '../api/events';
 import { useState, useEffect } from 'react';
 
 export default function EventDiscovery() {
-    const { events, isLoading } = useEvents();
+    const { events, isLoading, refreshEvents } = useEvents();
     const navigate = useNavigate();
+    const [activeCategory, setActiveCategory] = useState<string>('all');
 
     // Track join status for each event: 'idle' | 'joining' | 'joined'
     const [joinStatus, setJoinStatus] = useState<Record<string, 'idle' | 'joining' | 'joined'>>({});
@@ -17,6 +18,11 @@ export default function EventDiscovery() {
     useEffect(() => {
         console.log("[EventDiscovery] Component Mounted/Updated. Events count:", events.length);
     }, [events]);
+
+    const handleCategoryChange = (category: string) => {
+        setActiveCategory(category);
+        refreshEvents({ type: category === 'all' ? undefined : category });
+    };
 
     const handleJoinEvent = async (e: React.MouseEvent, eventId: string) => {
         console.log(`[EventDiscovery] handleJoinEvent called for ${eventId}`);
@@ -66,15 +72,24 @@ export default function EventDiscovery() {
         <div className="space-y-10 animate-fade-in pb-20">
             {/* Horizontal Filter Chips */}
             <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1">
-                <button className="px-4 py-1.5 rounded-full bg-primary text-white text-xs font-semibold whitespace-nowrap">All Events</button>
+                <button
+                    onClick={() => handleCategoryChange('all')}
+                    className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${activeCategory === 'all' ? 'bg-primary text-white' : 'bg-primary/10 text-slate-300 hover:bg-primary/20'}`}
+                >
+                    All Events
+                </button>
                 {[
-                    { icon: 'terminal', label: 'Tech' },
-                    { icon: 'theater_comedy', label: 'Cult' },
-                    { icon: 'sports_basketball', label: 'Sports' },
-                    { icon: 'auto_stories', label: 'Acad' },
-                    { icon: 'more_horiz', label: 'Other' }
+                    { icon: 'terminal', label: 'Tech', value: 'tech' },
+                    { icon: 'theater_comedy', label: 'Cult', value: 'cult' },
+                    { icon: 'sports_basketball', label: 'Sports', value: 'sports' },
+                    { icon: 'auto_stories', label: 'Acad', value: 'acad' },
+                    { icon: 'more_horiz', label: 'Other', value: 'others' }
                 ].map((filter) => (
-                    <button key={filter.label} className="px-4 py-1.5 rounded-full bg-primary/10 text-slate-300 hover:bg-primary/20 text-xs font-semibold whitespace-nowrap flex items-center gap-1.5">
+                    <button
+                        key={filter.value}
+                        onClick={() => handleCategoryChange(filter.value)}
+                        className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 ${activeCategory === filter.value ? 'bg-primary text-white' : 'bg-primary/10 text-slate-300 hover:bg-primary/20'}`}
+                    >
                         <span className="material-symbols-outlined !text-sm">{filter.icon}</span>
                         {filter.label}
                     </button>
@@ -158,7 +173,7 @@ export default function EventDiscovery() {
                             <div className="relative aspect-[21/9] md:aspect-[3/1] bg-slate-800">
                                 <img src={getEventImage(idx + 5)} className="w-full h-full object-cover" alt={event.title} />
                                 <div className="absolute top-4 right-4 px-3 py-1 bg-black/40 backdrop-blur-md rounded-full text-white text-[10px] font-bold uppercase tracking-wider">
-                                    Cultural
+                                    {event.event_type || 'Cultural'}
                                 </div>
                             </div>
                             <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
